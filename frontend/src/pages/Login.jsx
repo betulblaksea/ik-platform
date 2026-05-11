@@ -1,5 +1,5 @@
 "use client"
-
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { Mail, Lock, User, Shield, ArrowRight, Sparkles, Cpu, Activity } from "lucide-react"
@@ -8,6 +8,8 @@ import { Mail, Lock, User, Shield, ArrowRight, Sparkles, Cpu, Activity } from "l
 // AURORA MESH GRADIENT BACKGROUND (z-index: 0)
 // =============================================================================
 function AuroraMeshGradient() {
+
+ 
   return (
     <div className="absolute inset-0 overflow-hidden z-0">
       {/* Base deep space gradient */}
@@ -344,6 +346,7 @@ const staggerItem = {
 // MAIN LOGIN PAGE COMPONENT
 // =============================================================================
 export function LoginPage() {
+  const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState("employee")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -388,6 +391,8 @@ export function LoginPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    console.log("Login successful");
+    navigate("/dashboard");
   }
 
   const roleConfig = {
@@ -672,6 +677,7 @@ export function LoginPage() {
 
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
+                
                 {/* Email Field */}
                 <motion.div className="space-y-2" variants={staggerItem}>
                   <label htmlFor="email" className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -839,3 +845,4 @@ export function LoginPage() {
     </div>
   )
 }
+export default LoginPage;

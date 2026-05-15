@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Layout } from "../components/Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, Clock, Circle, ChevronRight, Plus, Zap,

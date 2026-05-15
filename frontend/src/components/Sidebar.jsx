@@ -4,12 +4,14 @@
 
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   SunMedium,
   CheckSquare,
   ShieldCheck,
+  UserPlus,
   Zap,
   LogOut,
   Settings,
@@ -17,21 +19,58 @@ import {
 
 // ─── Nav configuration ────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { label: "Dashboard",     icon: LayoutDashboard, path: "/"              },
-  { label: "Morning Chart", icon: SunMedium,       path: "/morning-chart" },
-  { label: "Tasks",         icon: CheckSquare,     path: "/tasks"         },
-  { label: "Permissions",   icon: ShieldCheck,     path: "/permissions"   },
+  { label: "Dashboard",     icon: LayoutDashboard, path: "/dashboard",     hrOnly: false },
+  { label: "Morning Chart", icon: SunMedium,       path: "/morning-chart", hrOnly: false },
+  { label: "Tasks",         icon: CheckSquare,     path: "/tasks",         hrOnly: false },
+  { label: "Permissions",   icon: ShieldCheck,     path: "/permissions",   hrOnly: false },
+  { label: "Çalışanlar",    icon: UserPlus,        path: "/employees",     hrOnly: true  },
 ];
+
+function profileInitials(name, email) {
+  const n = (name || "").trim();
+  if (n) {
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return n.slice(0, 2).toUpperCase();
+  }
+  const e = (email || "").trim();
+  return e ? e.slice(0, 2).toUpperCase() : "?";
+}
+
+function roleLabel(role) {
+  if (role === "hr") return "İK yöneticisi";
+  if (role === "employee") return "Çalışan";
+  return role || "—";
+}
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 export default function Sidebar() {
   const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  const displayName = (user?.name || "").trim() || user?.email || "Kullanıcı";
+  const hasName = Boolean((user?.name || "").trim());
+  const hrManager =
+    user?.role === "employee" && user?.addedBy
+      ? (user.addedBy.name || user.addedBy.email)
+      : null;
+  const subtitle = user?.email ? roleLabel(user.role) : "—";
+  const detailLine = user?.email
+    ? hasName
+      ? hrManager
+        ? `${subtitle} · İK: ${hrManager}`
+        : `${subtitle} · ${user.email}`
+      : hrManager
+        ? `${subtitle} · İK: ${hrManager}`
+        : subtitle
+    : subtitle;
+  const initials = profileInitials(user?.name, user?.email);
 
   return (
     <aside
@@ -78,7 +117,7 @@ export default function Sidebar() {
           Navigation
         </p>
 
-        {NAV_ITEMS.map(({ label, icon: Icon, path }) => {
+        {NAV_ITEMS.filter((item) => !item.hrOnly || user?.role === "hr").map(({ label, icon: Icon, path }) => {
           const active = pathname === path;
           return (
             <Link key={path} to={path} style={{ textDecoration: "none" }}>
@@ -152,21 +191,33 @@ export default function Sidebar() {
         className="px-3 pb-6 pt-4 space-y-1"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
       >
-        {[
-          { icon: Settings, label: "Settings" },
-          { icon: LogOut,   label: "Sign Out"  },
-        ].map(({ icon: Icon, label }) => (
-          <div
-            key={label}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
-            style={{ color: "rgba(255,255,255,0.28)" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
-            onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.28)")}
-          >
-            <Icon size={15} />
-            <span className="text-sm">{label}</span>
-          </div>
-        ))}
+        <div
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
+          style={{ color: "rgba(255,255,255,0.28)" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.28)")}
+        >
+          <Settings size={15} />
+          <span className="text-sm">Ayarlar</span>
+        </div>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={signOut}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              signOut();
+            }
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
+          style={{ color: "rgba(255,255,255,0.28)" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.28)")}
+        >
+          <LogOut size={15} />
+          <span className="text-sm">Çıkış</span>
+        </div>
 
         {/* User chip */}
         <div
@@ -180,17 +231,18 @@ export default function Sidebar() {
             className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #3b82f6, #8b5cf6)" }}
           >
-            J
+            {initials}
           </div>
           <div className="min-w-0">
             <div className="text-xs font-semibold text-white leading-none truncate">
-              J. Alderman
+              {displayName}
             </div>
             <div
               className="text-xs leading-none mt-0.5 truncate"
               style={{ color: "rgba(255,255,255,0.3)" }}
+              title={user?.email || ""}
             >
-              Administrator
+              {detailLine}
             </div>
           </div>
           <div

@@ -96,3 +96,27 @@ export async function me(req, res) {
     return res.status(500).json({ message: "Could not load profile" });
   }
 }
+
+// backend/src/controllers/userController.js (veya authController)
+export const addEmployee = async (req, res) => {
+  try {
+    const { name, email, password, position, dept } = req.body;
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const newEmployee = new User({
+      name,
+      email,
+      password: hash,
+      position,
+      dept,
+      role: 'employee',
+      addedBy: req.userId // requireAuth middleware'inden gelen HR ID'si
+    });
+
+    await newEmployee.save();
+    res.status(201).json({ message: "Çalışan başarıyla eklendi", user: userResponse(newEmployee) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

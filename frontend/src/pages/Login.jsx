@@ -599,14 +599,14 @@ export function LoginPage() {
                   {registerSuccessUser
                     ? "Kayıt tamam"
                     : authMode === "register"
-                      ? "Hesap oluştur"
+                      ? "HR Manager Hesabı Oluştur"
                       : "Giriş yap"}
                 </h2>
                 <p className="text-gray-400 text-sm mt-1.5">
                   {registerSuccessUser
-                    ? "Aşağıdaki bilgiler API’nin DB’den döndürdüğü kullanıcı kaydıdır; Compass / mongosh ile aynı ID’yi doğrulayabilirsiniz."
+                    ? "Aşağıdaki bilgiler API'nin DB'den döndürdüğü kullanıcı kaydıdır; Compass / mongosh ile aynı ID'yi doğrulayabilirsiniz."
                     : authMode === "register"
-                      ? "Kayıt başarılı olduğunda sunucunun DB’den döndürdüğü kullanıcı bilgisini aşağıda görebilirsiniz (test)."
+                      ? "HR Manager olarak kayıt başarılı olduğunda sunucunun DB'den döndürdüğü kullanıcı bilgisini aşağıda görebilirsiniz."
                       : "Panonuza devam etmek için e-posta ve şifrenizi girin."}
                 </p>
               </motion.div>
@@ -615,11 +615,13 @@ export function LoginPage() {
               {!registerSuccessUser ? (
               <motion.div className="mb-7" variants={staggerItem}>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 block">Select Your Role</label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid ${authMode === "login" ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
                   {[
                     { id: "employee", title: "Employee", description: "Access your dashboard", Icon: User },
                     { id: "hr", title: "HR Manager", description: "Manage your team", Icon: Shield },
-                  ].map((role) => {
+                  ]
+                    .filter((role) => authMode === "login" || role.id !== "employee")
+                    .map((role) => {
                     const isSelected = selectedRole === role.id
                     const isHovered = hoveredRole === role.id
                     const config = roleConfig[role.id]
@@ -728,16 +730,6 @@ export function LoginPage() {
 
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
-                {authError ? (
-                  <motion.div
-                    variants={staggerItem}
-                    className="rounded-xl px-4 py-3 text-sm text-red-200"
-                    style={{ background: "rgba(127, 29, 29, 0.35)", border: "1px solid rgba(248, 113, 113, 0.35)" }}
-                  >
-                    {authError}
-                  </motion.div>
-                ) : null}
-
                 {registerSuccessUser ? (
                   <motion.div
                     variants={staggerItem}
@@ -752,7 +744,7 @@ export function LoginPage() {
                       <div>
                         <p className="font-semibold text-emerald-100">Kayıt başarılı — kullanıcı veritabanına yazıldı</p>
                         <p className="text-emerald-200/80 text-xs mt-1">
-                          API yanıtındaki <code className="text-emerald-300">user</code> nesnesi (MongoDB&apos;deki kayıt ile eşleşir).
+                          API yanıtındaki <code className="text-emerald-300">user</code> nesnesi (MongoDB'deki kayıt ile eşleşir).
                         </p>
                       </div>
                     </div>
@@ -773,7 +765,7 @@ export function LoginPage() {
                         style={{ background: currentConfig.gradient }}
                         onClick={() => navigate("/dashboard")}
                       >
-                        Dashboard&apos;a git
+                        Dashboard'a git
                       </button>
                       <button
                         type="button"
@@ -791,6 +783,16 @@ export function LoginPage() {
                         Yeni kullanıcı kaydet
                       </button>
                     </div>
+                  </motion.div>
+                ) : null}
+
+                {authError ? (
+                  <motion.div
+                    variants={staggerItem}
+                    className="rounded-xl px-4 py-3 text-sm text-red-200"
+                    style={{ background: "rgba(127, 29, 29, 0.35)", border: "1px solid rgba(248, 113, 113, 0.35)" }}
+                  >
+                    {authError}
                   </motion.div>
                 ) : null}
 
@@ -931,16 +933,17 @@ export function LoginPage() {
                 </>
                 ) : null}
 
-                {/* Sign Up */}
+                {/* Sign Up / Login Toggle */}
                 <motion.p className="text-center text-sm text-gray-500 mt-8" variants={staggerItem}>
                   {authMode === "login" ? (
                     <>
-                      Hesabınız yok mu?{" "}
+                      HR Manager mısınız?{" "}
                       <button
                         type="button"
-                        className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+                        className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
                         onClick={() => {
                           setAuthMode("register")
+                          setSelectedRole("hr")
                           setAuthError("")
                           setRegisterSuccessUser(null)
                         }}

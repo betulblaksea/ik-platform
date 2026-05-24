@@ -5,25 +5,24 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { formatPortalRole, isManagerRole } from "../utils/roleLabels.js";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   SunMedium,
   CheckSquare,
-  ShieldCheck,
-  UserPlus,
   Zap,
   LogOut,
   Settings,
+  Target,
 } from "lucide-react";
 
 // ─── Nav configuration ────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { label: "Dashboard",     icon: LayoutDashboard, path: "/dashboard",     hrOnly: false },
-  { label: "Morning Chart", icon: SunMedium,       path: "/morning-chart", hrOnly: false },
-  { label: "Tasks",         icon: CheckSquare,     path: "/tasks",         hrOnly: false },
-  { label: "Permissions",   icon: ShieldCheck,     path: "/permissions",   hrOnly: false },
-  { label: "Çalışanlar",    icon: UserPlus,        path: "/employees",     hrOnly: true  },
+  { label: "Panel",           icon: LayoutDashboard, path: "/dashboard",     managerOnly: true },
+  { label: "Kadro Planlama",  icon: Target,          path: "/workforce",     managerOnly: true },
+  { label: "Çalışma Saatleri", icon: SunMedium,       path: "/morning-chart", managerOnly: false },
+  { label: "Görevler",        icon: CheckSquare,     path: "/tasks",         managerOnly: false },
 ];
 
 function profileInitials(name, email) {
@@ -38,9 +37,7 @@ function profileInitials(name, email) {
 }
 
 function roleLabel(role) {
-  if (role === "hr") return "İK yöneticisi";
-  if (role === "employee") return "Çalışan";
-  return role || "—";
+  return formatPortalRole(role);
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -56,18 +53,18 @@ export default function Sidebar() {
 
   const displayName = (user?.name || "").trim() || user?.email || "Kullanıcı";
   const hasName = Boolean((user?.name || "").trim());
-  const hrManager =
+  const managerName =
     user?.role === "employee" && user?.addedBy
       ? (user.addedBy.name || user.addedBy.email)
       : null;
   const subtitle = user?.email ? roleLabel(user.role) : "—";
   const detailLine = user?.email
     ? hasName
-      ? hrManager
-        ? `${subtitle} · İK: ${hrManager}`
+      ? managerName
+        ? `${subtitle} · Yönetici: ${managerName}`
         : `${subtitle} · ${user.email}`
-      : hrManager
-        ? `${subtitle} · İK: ${hrManager}`
+      : managerName
+        ? `${subtitle} · Yönetici: ${managerName}`
         : subtitle
     : subtitle;
   const initials = profileInitials(user?.name, user?.email);
@@ -114,10 +111,13 @@ export default function Sidebar() {
           className="px-3 mb-3 text-xs font-semibold tracking-widest uppercase"
           style={{ color: "rgba(255,255,255,0.2)", fontSize: "9px", letterSpacing: "0.16em" }}
         >
-          Navigation
+          {user?.role === "employee" ? "İşlerim" : "Menü"}
         </p>
 
-        {NAV_ITEMS.filter((item) => !item.hrOnly || user?.role === "hr").map(({ label, icon: Icon, path }) => {
+        {(user?.role === "employee"
+          ? NAV_ITEMS.filter((item) => item.path === "/morning-chart" || item.path === "/tasks")
+          : NAV_ITEMS.filter((item) => !item.managerOnly || isManagerRole(user?.role))
+        ).map(({ label, icon: Icon, path }) => {
           const active = pathname === path;
           return (
             <Link key={path} to={path} style={{ textDecoration: "none" }}>
@@ -191,6 +191,7 @@ export default function Sidebar() {
         className="px-3 pb-6 pt-4 space-y-1"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
       >
+        {isManagerRole(user?.role) ? (
         <div
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
           style={{ color: "rgba(255,255,255,0.28)" }}
@@ -200,6 +201,7 @@ export default function Sidebar() {
           <Settings size={15} />
           <span className="text-sm">Ayarlar</span>
         </div>
+        ) : null}
         <div
           role="button"
           tabIndex={0}

@@ -3,164 +3,17 @@
 // Requires: react-router-dom, lucide-react, framer-motion, tailwindcss
 // Import Layout from Sidebar.jsx (or its own file if you split it out).
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, X, Wifi, TrendingUp, Zap, Shield,
-  Code2, Palette, BarChart3, Globe, Cpu, Lock,
-  ChevronRight, Activity, Sparkles, Bell, Search,
-  CircleDot,
+  Users, X, TrendingUp, Zap,
+  ChevronRight, Sparkles, Bell, Search, UserPlus,
 } from "lucide-react";
 
-// Import Layout (and Sidebar) from Sidebar.jsx
 import { Layout } from "../components/Sidebar";
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const teams = [
-  {
-    id: 1,
-    name: "Quantum Core",
-    department: "Engineering",
-    efficiency: 94,
-    aiInsight: "Sprint velocity up 18% — on track to exceed Q3 targets.",
-    aiScore: 98,
-    icon: Cpu,
-    color: "#3b82f6",
-    glow: "rgba(59,130,246,0.35)",
-    members: [
-      { name: "Aria Nakamura",  role: "Lead Engineer",  online: true,  avatar: "AN" },
-      { name: "Ethan Cross",    role: "Backend Dev",    online: true,  avatar: "EC" },
-      { name: "Sofia Reyes",    role: "DevOps",         online: false, avatar: "SR" },
-      { name: "Liam Okafor",    role: "Frontend Dev",   online: true,  avatar: "LO" },
-      { name: "Maya Chen",      role: "QA Engineer",    online: true,  avatar: "MC" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Cipher Shield",
-    department: "Security",
-    efficiency: 88,
-    aiInsight: "Threat detection improved. Zero breaches in 47 days.",
-    aiScore: 91,
-    icon: Shield,
-    color: "#f59e0b",
-    glow: "rgba(245,158,11,0.35)",
-    members: [
-      { name: "Zara Ahmed",  role: "Security Architect", online: true,  avatar: "ZA" },
-      { name: "Noah Park",   role: "Pen Tester",         online: false, avatar: "NP" },
-      { name: "Isla Torres", role: "SOC Analyst",        online: true,  avatar: "IT" },
-      { name: "Ryo Matsuda", role: "Compliance Lead",    online: true,  avatar: "RM" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Prism Studio",
-    department: "Design",
-    efficiency: 91,
-    aiInsight: "Creative output trending 22% above baseline this month.",
-    aiScore: 89,
-    icon: Palette,
-    color: "#ec4899",
-    glow: "rgba(236,72,153,0.35)",
-    members: [
-      { name: "Luna Silva",  role: "Creative Director", online: true,  avatar: "LS" },
-      { name: "Finn Walsh",  role: "UX Designer",       online: true,  avatar: "FW" },
-      { name: "Cleo Bauer",  role: "Motion Designer",   online: true,  avatar: "CB" },
-      { name: "Ade Johnson", role: "Brand Designer",    online: false, avatar: "AJ" },
-      { name: "Nora Kim",    role: "UI Lead",           online: true,  avatar: "NK" },
-      { name: "Theo Grant",  role: "Illustrator",       online: false, avatar: "TG" },
-    ],
-  },
-  {
-    id: 4,
-    name: "Vertex Analytics",
-    department: "Data & BI",
-    efficiency: 79,
-    aiInsight: "Data pipeline latency flagged — recommend infrastructure review.",
-    aiScore: 74,
-    icon: BarChart3,
-    color: "#10b981",
-    glow: "rgba(16,185,129,0.35)",
-    members: [
-      { name: "Omar Farsi",  role: "Data Scientist", online: false, avatar: "OF" },
-      { name: "Hana Patel",  role: "BI Engineer",    online: true,  avatar: "HP" },
-      { name: "Joel Stroud", role: "ML Engineer",    online: true,  avatar: "JS" },
-      { name: "Vera Lund",   role: "Analytics Lead", online: false, avatar: "VL" },
-    ],
-  },
-  {
-    id: 5,
-    name: "NexusComm",
-    department: "Infrastructure",
-    efficiency: 85,
-    aiInsight: "Uptime at 99.97%. Predictive scaling saved 12% cloud costs.",
-    aiScore: 95,
-    icon: Globe,
-    color: "#8b5cf6",
-    glow: "rgba(139,92,246,0.35)",
-    members: [
-      { name: "Kai Brennan", role: "Infra Lead",       online: true, avatar: "KB" },
-      { name: "Suki Tanaka", role: "Network Eng.",      online: true, avatar: "ST" },
-      { name: "Bram Visser", role: "Cloud Architect",   online: true, avatar: "BV" },
-    ],
-  },
-  {
-    id: 6,
-    name: "CodeWeave",
-    department: "Platform",
-    efficiency: 96,
-    aiInsight: "Highest deployment frequency. CI/CD pipeline fully optimized.",
-    aiScore: 99,
-    icon: Code2,
-    color: "#06b6d4",
-    glow: "rgba(6,182,212,0.35)",
-    members: [
-      { name: "Ren Yoshida", role: "Platform Eng.", online: true,  avatar: "RY" },
-      { name: "Mila Costa",  role: "Senior Dev",    online: false, avatar: "MC" },
-      { name: "Axel Berg",   role: "Fullstack Dev", online: true,  avatar: "AB" },
-      { name: "Dara Quinn",  role: "API Architect", online: true,  avatar: "DQ" },
-      { name: "Sam Osei",    role: "DevEx Lead",    online: true,  avatar: "SO" },
-    ],
-  },
-  {
-    id: 7,
-    name: "VaultKey",
-    department: "Compliance",
-    efficiency: 82,
-    aiInsight: "Audit readiness at 94%. Two policy gaps identified — resolving.",
-    aiScore: 86,
-    icon: Lock,
-    color: "#f97316",
-    glow: "rgba(249,115,22,0.35)",
-    members: [
-      { name: "Ingrid Moss",  role: "Compliance Dir.", online: true,  avatar: "IM" },
-      { name: "Carlos Vega",  role: "Risk Analyst",    online: false, avatar: "CV" },
-      { name: "Pearl Nwosu",  role: "Legal Tech Lead",  online: true,  avatar: "PN" },
-    ],
-  },
-  {
-    id: 8,
-    name: "PulseOps",
-    department: "Operations",
-    efficiency: 77,
-    aiInsight: "Process bottleneck in onboarding flow — optimization recommended.",
-    aiScore: 71,
-    icon: Activity,
-    color: "#ef4444",
-    glow: "rgba(239,68,68,0.35)",
-    members: [
-      { name: "Drew Larson", role: "Ops Manager",   online: true,  avatar: "DL" },
-      { name: "Amara Diop",  role: "Process Lead",  online: true,  avatar: "AD" },
-      { name: "Felix Holt",  role: "Coordinator",   online: false, avatar: "FH" },
-      { name: "Juno Park",   role: "Analyst",       online: true,  avatar: "JP" },
-    ],
-  },
-];
-
-// ─── Derived stats ─────────────────────────────────────────────────────────────
-const TOTAL_MEMBERS   = teams.reduce((s, t) => s + t.members.length, 0);
-const AVG_EFFICIENCY  = Math.round(teams.reduce((s, t) => s + t.efficiency, 0) / teams.length);
-const ONLINE_COUNT    = teams.reduce((s, t) => s + t.members.filter(m => m.online).length, 0);
+import AddEmployeeModal from "../components/AddEmployeeModal.jsx";
+import { useManagerEmployees } from "../hooks/useManagerEmployees.js";
+import { employeesToTeams } from "../utils/employeeTeams.js";
 
 // ─── Animation variants ────────────────────────────────────────────────────────
 const cardVariants = {
@@ -313,8 +166,6 @@ function TeamCard({ team, index, onClick }) {
 
 // ─── Drawer ────────────────────────────────────────────────────────────────────
 function Drawer({ team, onClose }) {
-  const onlineCount = team?.members.filter(m => m.online).length ?? 0;
-
   return (
     <AnimatePresence>
       {team && (
@@ -378,11 +229,10 @@ function Drawer({ team, onClose }) {
               </p>
 
               {/* Mini stats */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Members",    value: team.members.length, Icon: Users       },
-                  { label: "Online",     value: onlineCount,          Icon: Wifi        },
-                  { label: "Efficiency", value: `${team.efficiency}%`, Icon: TrendingUp },
+                  { label: "Çalışan", value: team.members.length, Icon: Users },
+                  { label: "Verim", value: `${team.efficiency}%`, Icon: TrendingUp },
                 ].map(({ label, value, Icon }) => (
                   <div
                     key={label}
@@ -480,23 +330,6 @@ function Drawer({ team, onClose }) {
                       </p>
                     </div>
 
-                    {/* Online / Away */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {member.online ? (
-                        <>
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                          </span>
-                          <span className="text-xs" style={{ color: "#34d399" }}>Online</span>
-                        </>
-                      ) : (
-                        <>
-                          <CircleDot size={8} style={{ color: "rgba(255,255,255,0.2)" }} />
-                          <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Away</span>
-                        </>
-                      )}
-                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -564,7 +397,15 @@ function Topbar({ searchQuery, setSearchQuery, filtered, total }) {
 // ─── Dashboard page ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [selectedTeam, setSelectedTeam] = useState(null);
-  const [searchQuery,  setSearchQuery]  = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const { employees, setEmployees } = useManagerEmployees();
+
+  const teams = useMemo(() => employeesToTeams(employees), [employees]);
+  const totalMembers = employees.length;
+  const avgEfficiency = teams.length
+    ? Math.round(teams.reduce((s, t) => s + t.efficiency, 0) / teams.length)
+    : 0;
 
   const filtered = teams.filter(
     t =>
@@ -587,16 +428,15 @@ export default function Dashboard() {
 
         {/* ── Stats row ── */}
         <motion.div
-          className="grid grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-3 gap-4 mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
           {[
-            { label: "Total Teams",    value: teams.length,   Icon: Users,      color: "#3b82f6", sub: "Across all departments" },
-            { label: "Team Members",   value: TOTAL_MEMBERS,  Icon: Zap,        color: "#8b5cf6", sub: "Active headcount"       },
-            { label: "Avg Efficiency", value: `${AVG_EFFICIENCY}%`, Icon: TrendingUp, color: "#10b981", sub: "Org-wide average"  },
-            { label: "Online Now",     value: ONLINE_COUNT,   Icon: Wifi,       color: "#f59e0b", sub: "Real-time presence"     },
+            { label: "Departman", value: teams.length, Icon: Users, color: "#3b82f6", sub: "Ekip grupları" },
+            { label: "Çalışan", value: totalMembers, Icon: Zap, color: "#8b5cf6", sub: "Toplam personel" },
+            { label: "Ort. verim", value: `${avgEfficiency}%`, Icon: TrendingUp, color: "#10b981", sub: "Departman bazlı" },
           ].map(({ label, value, Icon, color, sub }) => (
             <div
               key={label}
@@ -632,20 +472,18 @@ export default function Dashboard() {
               {filtered.length} of {teams.length} teams · Click a card to inspect
             </p>
           </div>
-          <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs"
+          <button
+            type="button"
+            onClick={() => setShowAddEmployee(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{
-              background: "rgba(16,185,129,0.1)",
-              border: "1px solid rgba(16,185,129,0.2)",
-              color: "#34d399",
+              background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+              boxShadow: "0 8px 24px rgba(59,130,246,0.25)",
             }}
           >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            Live data
-          </div>
+            <UserPlus size={16} />
+            Yeni Çalışan
+          </button>
         </div>
 
         {/* ── Cards grid — exactly 4 cols on lg ── */}
@@ -660,7 +498,11 @@ export default function Dashboard() {
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
               <Users size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No teams match "{searchQuery}"</p>
+              <p className="text-sm">
+                {teams.length === 0
+                  ? "Henüz çalışan eklenmemiş. Yeni Çalışan ile personel ekleyin."
+                  : `No teams match "${searchQuery}"`}
+              </p>
             </div>
           )}
         </div>
@@ -668,6 +510,15 @@ export default function Dashboard() {
 
       {/* Drawer */}
       <Drawer team={selectedTeam} onClose={() => setSelectedTeam(null)} />
+
+      <AnimatePresence>
+        {showAddEmployee && (
+          <AddEmployeeModal
+            onClose={() => setShowAddEmployee(false)}
+            onAdd={(newEmp) => setEmployees((prev) => [newEmp, ...prev])}
+          />
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }

@@ -75,8 +75,9 @@ export function AuthProvider({ children }) {
         }
         const data = await res.json().catch(() => ({}));
         if (!cancelled && data.user) {
-          localStorage.setItem(STORAGE_USER, JSON.stringify(data.user));
-          setState((prev) => ({ ...prev, user: data.user }));
+          const u = data.user;
+          localStorage.setItem(STORAGE_USER, JSON.stringify(u));
+          setState((prev) => ({ ...prev, user: u }));
         }
       } catch {
         /* mevcut context kullanıcısı kalsın */

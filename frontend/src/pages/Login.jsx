@@ -1,6 +1,7 @@
 "use client"
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { formatPortalRole, isManagerRole, MANAGER_ROLE } from "../utils/roleLabels.js";
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { Mail, Lock, User, Shield, ArrowRight, Sparkles, Cpu, Activity, CheckCircle2 } from "lucide-react"
@@ -405,7 +406,7 @@ export function LoginPage() {
       const path = authMode === "register" ? "/api/auth/register" : "/api/auth/login"
       const body =
         authMode === "register"
-          ? { email, password, name, role: selectedRole }
+          ? { email, password, name, role: MANAGER_ROLE }
           : { email, password, role: selectedRole }
       const res = await fetch(path, {
         method: "POST",
@@ -424,7 +425,7 @@ export function LoginPage() {
         setRegisterSuccessUser(data.user)
         return
       }
-      navigate("/dashboard")
+      navigate(isManagerRole(data.user?.role) ? "/dashboard" : "/tasks")
     } catch {
       setAuthError("Could not reach the server. Is the API running?")
     } finally {
@@ -434,9 +435,10 @@ export function LoginPage() {
 
   const roleConfig = {
     employee: { gradient: "linear-gradient(135deg, #0ea5e9, #0284c7)", glow: "rgba(14, 165, 233, 0.35)", accent: "#0ea5e9", hue: 200 },
-    hr: { gradient: "linear-gradient(135deg, #a855f7, #9333ea)", glow: "rgba(168, 85, 247, 0.35)", accent: "#a855f7", hue: 280 },
+    manager: { gradient: "linear-gradient(135deg, #a855f7, #9333ea)", glow: "rgba(168, 85, 247, 0.35)", accent: "#a855f7", hue: 280 },
   }
-  const currentConfig = roleConfig[selectedRole]
+  const effectiveRole = authMode === "register" ? MANAGER_ROLE : selectedRole
+  const currentConfig = roleConfig[effectiveRole]
 
   return (
     <div ref={containerRef} className="min-h-screen w-full flex relative overflow-hidden" style={{ background: "#06060f" }}>
@@ -599,29 +601,27 @@ export function LoginPage() {
                   {registerSuccessUser
                     ? "Kayıt tamam"
                     : authMode === "register"
-                      ? "HR Manager Hesabı Oluştur"
+                      ? "Yönetici Hesabı Oluştur"
                       : "Giriş yap"}
                 </h2>
                 <p className="text-gray-400 text-sm mt-1.5">
                   {registerSuccessUser
                     ? "Aşağıdaki bilgiler API'nin DB'den döndürdüğü kullanıcı kaydıdır; Compass / mongosh ile aynı ID'yi doğrulayabilirsiniz."
                     : authMode === "register"
-                      ? "HR Manager olarak kayıt başarılı olduğunda sunucunun DB'den döndürdüğü kullanıcı bilgisini aşağıda görebilirsiniz."
+                      ? "Yönetici olarak kayıt başarılı olduğunda sunucunun DB'den döndürdüğü kullanıcı bilgisini aşağıda görebilirsiniz."
                       : "Panonuza devam etmek için e-posta ve şifrenizi girin."}
                 </p>
               </motion.div>
 
-              {/* Role Selection */}
-              {!registerSuccessUser ? (
+              {/* Role Selection (login only) */}
+              {!registerSuccessUser && authMode === "login" ? (
               <motion.div className="mb-7" variants={staggerItem}>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 block">Select Your Role</label>
-                <div className={`grid ${authMode === "login" ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 block">Rolünüzü seçin</label>
+                <div className="grid grid-cols-2 gap-4">
                   {[
-                    { id: "employee", title: "Employee", description: "Access your dashboard", Icon: User },
-                    { id: "hr", title: "HR Manager", description: "Manage your team", Icon: Shield },
-                  ]
-                    .filter((role) => authMode === "login" || role.id !== "employee")
-                    .map((role) => {
+                    { id: "employee", title: "Çalışan", description: "Görevler ve sabah girişi", Icon: User },
+                    { id: MANAGER_ROLE, title: "Yönetici", description: "Ekibinizi yönetin", Icon: Shield },
+                  ].map((role) => {
                     const isSelected = selectedRole === role.id
                     const isHovered = hoveredRole === role.id
                     const config = roleConfig[role.id]
@@ -756,7 +756,7 @@ export function LoginPage() {
                       <dt className="text-emerald-400/90 font-medium">Ad</dt>
                       <dd>{registerSuccessUser.name || "—"}</dd>
                       <dt className="text-emerald-400/90 font-medium">Rol</dt>
-                      <dd>{registerSuccessUser.role}</dd>
+                      <dd>{formatPortalRole(registerSuccessUser.role)}</dd>
                     </dl>
                     <div className="flex flex-col sm:flex-row gap-3 pt-1">
                       <button
@@ -937,13 +937,13 @@ export function LoginPage() {
                 <motion.p className="text-center text-sm text-gray-500 mt-8" variants={staggerItem}>
                   {authMode === "login" ? (
                     <>
-                      HR Manager mısınız?{" "}
+                      Yönetici misiniz?{" "}
                       <button
                         type="button"
                         className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
                         onClick={() => {
                           setAuthMode("register")
-                          setSelectedRole("hr")
+                          setSelectedRole(MANAGER_ROLE)
                           setAuthError("")
                           setRegisterSuccessUser(null)
                         }}

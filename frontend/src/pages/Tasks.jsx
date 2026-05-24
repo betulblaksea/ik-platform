@@ -1,69 +1,49 @@
 // TasksPage.jsx
-// Core Tasks page for HR platform — styled to match MorningChart.jsx
+// Core Tasks page — styled to match MorningChart.jsx
 // Requires: react-router-dom, lucide-react, framer-motion, tailwindcss
 // Place in: src/pages/TasksPage.jsx
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useManagerEmployees } from "../hooks/useManagerEmployees.js";
+import { isManagerRole } from "../utils/roleLabels.js";
+import { useTasks } from "../hooks/useTasks.js";
+import { uniqueDepts } from "../utils/employeeTeams.js";
+import { formatDuration, PRIORITY_META } from "../utils/taskTime.js";
+import { calcEfficiency, teamEfficiency } from "../utils/taskMetrics.js";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, Circle, Plus, Zap, Users, BarChart3,
   TrendingUp, TrendingDown, Search, X, Flame, AlertTriangle,
   Star, Sparkles, ShieldAlert, Trophy, Activity, ChevronRight,
   Bell, Filter, ArrowUpRight, ArrowDownRight, Minus,
+  Calendar, AlignLeft, Clock,
 } from "lucide-react";
 import { Layout } from "../components/Sidebar";
+import { useAiInsight } from "../hooks/useAiInsight.js";
+import AiAnalysisNote from "../components/AiAnalysisNote.jsx";
 
-// ── Mock Data ─────────────────────────────────────────────────────────────────
-const TEAMS = ["All", "Development", "Design", "Sales"];
+const AVATAR_PALETTE = ["#60a5fa", "#f472b6", "#34d399", "#a78bfa", "#fbbf24", "#818cf8"];
 
-const TASKS = [
-  { id: 1,  team: "Development", employee: "Aiden Park",    avatar: "AP", title: "Refactor Auth Microservice",  status: "Done",        estimated: 8,  spent: 6   },
-  { id: 2,  team: "Development", employee: "Sofia Reyes",   avatar: "SR", title: "Build REST API Endpoints",    status: "In Progress", estimated: 5,  spent: 6.5 },
-  { id: 3,  team: "Development", employee: "Marcus Webb",   avatar: "MW", title: "Database Schema Migration",   status: "In Progress", estimated: 3,  spent: 2   },
-  { id: 4,  team: "Development", employee: "Priya Nair",    avatar: "PN", title: "Integrate Payment Gateway",   status: "To Do",       estimated: 6,  spent: 0   },
-  { id: 5,  team: "Development", employee: "Luca Ferretti", avatar: "LF", title: "Write Unit Test Suite",       status: "Done",        estimated: 4,  spent: 3   },
-  { id: 6,  team: "Design",      employee: "Zoe Hartmann",  avatar: "ZH", title: "Redesign Onboarding Flow",    status: "Done",        estimated: 5,  spent: 4   },
-  { id: 7,  team: "Design",      employee: "Omar Khalil",   avatar: "OK", title: "Create Component Library",    status: "In Progress", estimated: 10, spent: 13  },
-  { id: 8,  team: "Design",      employee: "Isla Monroe",   avatar: "IM", title: "Brand Identity Refresh",      status: "In Progress", estimated: 7,  spent: 5   },
-  { id: 9,  team: "Design",      employee: "Zoe Hartmann",  avatar: "ZH", title: "Mobile App Prototyping",      status: "To Do",       estimated: 4,  spent: 0   },
-  { id: 10, team: "Design",      employee: "Omar Khalil",   avatar: "OK", title: "Accessibility Audit & Fixes", status: "Done",        estimated: 3,  spent: 2.5 },
-  { id: 11, team: "Sales",       employee: "Nina Castillo", avatar: "NC", title: "Q3 Enterprise Outreach",      status: "In Progress", estimated: 4,  spent: 3   },
-  { id: 12, team: "Sales",       employee: "Ben Okafor",    avatar: "BO", title: "Close Renewal — Acme Corp",   status: "Done",        estimated: 2,  spent: 3.5 },
-  { id: 13, team: "Sales",       employee: "Jess Tanaka",   avatar: "JT", title: "Demo Deck — EMEA Region",     status: "Done",        estimated: 3,  spent: 2   },
-  { id: 14, team: "Sales",       employee: "Nina Castillo", avatar: "NC", title: "Competitor Analysis Report",  status: "To Do",       estimated: 5,  spent: 0   },
-  { id: 15, team: "Sales",       employee: "Ben Okafor",    avatar: "BO", title: "Lead Qualification Sprint",   status: "In Progress", estimated: 6,  spent: 7   },
-];
-
-const AVATAR_COLORS = {
-  AP: "#60a5fa", SR: "#f472b6", MW: "#34d399", PN: "#a78bfa",
-  LF: "#fbbf24", ZH: "#f472b6", OK: "#818cf8", IM: "#34d399",
-  NC: "#60a5fa", BO: "#fbbf24", JT: "#a78bfa",
-};
+function avatarColor(avatar) {
+  if (!avatar) return AVATAR_PALETTE[0];
+  const code = avatar.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  return AVATAR_PALETTE[code % AVATAR_PALETTE.length];
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function calcEfficiency(task) {
-  if (task.status === "To Do" || task.spent === 0) return null;
-  return Math.round((task.estimated / task.spent) * 100);
-}
-
-function teamEfficiency(tasks) {
-  const scored = tasks.filter(t => calcEfficiency(t) !== null);
-  if (!scored.length) return null;
-  return Math.round(scored.reduce((s, t) => s + calcEfficiency(t), 0) / scored.length);
-}
-
 function perfLabel(score) {
-  if (score === null) return { label: "Pending",     color: "#6b7280", bg: "rgba(107,114,128,0.15)", icon: Circle        };
-  if (score >= 115)   return { label: "Exceptional", color: "#34d399", bg: "rgba(52,211,153,0.15)",  icon: Star          };
-  if (score >= 100)   return { label: "On Track",    color: "#60a5fa", bg: "rgba(96,165,250,0.15)",  icon: TrendingUp    };
-  if (score >= 80)    return { label: "Lagging",     color: "#fbbf24", bg: "rgba(251,191,36,0.15)",  icon: AlertTriangle };
-  return                     { label: "Critical",    color: "#f87171", bg: "rgba(248,113,113,0.15)", icon: TrendingDown  };
+  if (score === null) return { label: "Beklemede", color: "#6b7280", bg: "rgba(107,114,128,0.15)", icon: Circle };
+  if (score >= 115)   return { label: "Üstün", color: "#34d399", bg: "rgba(52,211,153,0.15)", icon: Star };
+  if (score >= 100)   return { label: "Hedefte", color: "#60a5fa", bg: "rgba(96,165,250,0.15)", icon: TrendingUp };
+  if (score >= 80)    return { label: "Geride", color: "#fbbf24", bg: "rgba(251,191,36,0.15)", icon: AlertTriangle };
+  return { label: "Kritik", color: "#f87171", bg: "rgba(248,113,113,0.15)", icon: TrendingDown };
 }
 
 const STATUS_META = {
-  "Done":        { color: "#34d399", icon: CheckCircle2 },
-  "In Progress": { color: "#818cf8", icon: Flame        },
-  "To Do":       { color: "#6b7280", icon: Circle       },
+  "Done":        { color: "#34d399", icon: CheckCircle2, label: "Tamamlandı" },
+  "In Progress": { color: "#818cf8", icon: Flame,        label: "Devam ediyor" },
+  "To Do":       { color: "#6b7280", icon: Circle,       label: "Yapılacak" },
 };
 
 // ── AI Analysis Engine ────────────────────────────────────────────────────────
@@ -98,16 +78,16 @@ export function analyzeTeamPerformance(tasks) {
   return {
     bottleneck: bottleneck ? {
       team: bottleneck.team, avgEfficiency: bottleneck.avg, delta: 100 - bottleneck.avg,
-      message: `${bottleneck.team} team is the current bottleneck at ${bottleneck.avg}% avg efficiency — ${100 - bottleneck.avg}% below target.`,
+      message: `${bottleneck.team} departmanı darboğaz: ortalama verim %${bottleneck.avg} (hedefin %${100 - bottleneck.avg} altında).`,
     } : null,
     star: star ? {
       employee: star.name, team: star.team, avgEfficiency: star.avg,
-      message: `${star.name} (${star.team}) is the top performer at ${star.avg}% efficiency across all tasks.`,
+      message: `${star.name} (${star.team}) en yüksek verim: %${star.avg}.`,
     } : null,
     risks: risks.map(t => ({
       id: t.id, employee: t.employee, title: t.title, team: t.team,
       burnPct: Math.round((t.spent / t.estimated) * 100),
-      message: `"${t.title}" by ${t.employee} has consumed ${Math.round((t.spent / t.estimated) * 100)}% of its budget with status still In Progress.`,
+      message: `${t.employee} — "${t.title}": tahminin %${Math.round((t.spent / t.estimated) * 100)}'i harcandı, durum hâlâ devam ediyor.`,
     })),
     generatedAt: new Date().toISOString(),
   };
@@ -115,17 +95,65 @@ export function analyzeTeamPerformance(tasks) {
 
 // ── AI Coach Card ─────────────────────────────────────────────────────────────
 function AICoachCard({ tasks }) {
-  const insights   = useMemo(() => analyzeTeamPerformance(tasks), [tasks]);
+  const { run, loading, error, insight } = useAiInsight();
   const [open, setOpen] = useState(true);
 
-  const bullets = [
-    insights.bottleneck && { key: "bottleneck", icon: ShieldAlert, color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.2)",  label: "Bottleneck",    text: insights.bottleneck.message },
-    insights.star        && { key: "star",        icon: Trophy,      color: "#fbbf24", bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.2)",   label: "Star Performer", text: insights.star.message       },
-    ...(insights.risks.length > 0
-      ? insights.risks.slice(0, 2).map(r => ({ key: `risk-${r.id}`, icon: Activity, color: "#fb923c", bg: "rgba(251,146,60,0.08)", border: "rgba(251,146,60,0.2)", label: `Risk · ${r.burnPct}% burned`, text: r.message }))
-      : [{ key: "clear", icon: CheckCircle2, color: "#34d399", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.2)", label: "All Clear", text: "No tasks approaching their time budget. Everything looks healthy!" }]
-    ),
-  ].filter(Boolean);
+  const refresh = useCallback(() => {
+    if (!tasks.length) return;
+    run("tasks", { tasks }).catch(() => {});
+  }, [run, tasks]);
+
+  useEffect(() => {
+    if (!tasks.length) return;
+    const t = setTimeout(refresh, 500);
+    return () => clearTimeout(t);
+  }, [refresh, tasks.length]);
+
+  const bullets = useMemo(() => {
+    if (!insight) return [];
+    const items = [];
+    if (insight.observation) {
+      items.push({
+        key: "obs",
+        icon: Activity,
+        color: "#a78bfa",
+        bg: "rgba(167,139,250,0.08)",
+        border: "rgba(167,139,250,0.2)",
+        label: "Gözlem",
+        text: insight.observation,
+      });
+    }
+    if (insight.suggestion) {
+      items.push({
+        key: "sug",
+        icon: Trophy,
+        color: "#34d399",
+        bg: "rgba(52,211,153,0.08)",
+        border: "rgba(52,211,153,0.2)",
+        label: "Öneri",
+        text: insight.suggestion,
+      });
+    }
+    (insight.actions || []).slice(0, 2).forEach((a, i) => {
+      items.push({
+        key: `act-${i}`,
+        icon: ShieldAlert,
+        color: "#fb923c",
+        bg: "rgba(251,146,60,0.08)",
+        border: "rgba(251,146,60,0.2)",
+        label: a.title,
+        text: a.detail,
+      });
+    });
+    return items.length ? items : [{ key: "wait", icon: Sparkles, color: "#818cf8", bg: "rgba(129,140,248,0.08)", border: "rgba(129,140,248,0.2)", label: "Beklemede", text: "Henüz öngörü yok." }];
+  }, [insight]);
+
+  if (loading && !insight) {
+    return <AiAnalysisNote loading error={null} insight={null} />;
+  }
+  if (error && !insight) {
+    return <AiAnalysisNote loading={false} error={error} insight={null} />;
+  }
 
   return (
     <motion.div
@@ -139,11 +167,9 @@ function AICoachCard({ tasks }) {
         boxShadow: "0 0 60px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.06)",
       }}
     >
-      {/* Glow orb */}
       <div className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none"
         style={{ background: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)", transform: "translate(30%,-30%)" }} />
 
-      {/* Shimmer sweep */}
       <motion.div
         animate={{ x: ["-100%", "100%"] }}
         transition={{ duration: 3.5, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
@@ -151,11 +177,9 @@ function AICoachCard({ tasks }) {
         style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.8), transparent)" }}
       />
 
-      {/* Bottom gradient line */}
       <div className="absolute bottom-0 left-0 right-0 h-px"
         style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)" }} />
 
-      {/* Header */}
       <div className="flex items-center gap-4 px-5 py-4 cursor-pointer relative" onClick={() => setOpen(o => !o)}>
         <div className="relative flex-shrink-0">
           <motion.div
@@ -172,7 +196,7 @@ function AICoachCard({ tasks }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-sm font-bold text-white tracking-tight">AI Team Coach</span>
+            <span className="text-sm font-bold text-white tracking-tight">Yapay Zeka Koçu</span>
             <motion.div
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ duration: 1.8, repeat: Infinity }}
@@ -184,7 +208,7 @@ function AICoachCard({ tasks }) {
             </motion.div>
           </div>
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-            {bullets.length} insight{bullets.length !== 1 ? "s" : ""} · Updated just now
+            {bullets.length} öngörü · Az önce güncellendi
           </p>
         </div>
 
@@ -229,9 +253,6 @@ function AICoachCard({ tasks }) {
                   </motion.div>
                 );
               })}
-              <p className="pt-1" style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
-                Analysis via <code style={{ color: "rgba(255,255,255,0.25)" }}>analyzeTeamPerformance(tasks)</code> — swap with your DB response to go live.
-              </p>
             </div>
           </motion.div>
         )}
@@ -280,14 +301,22 @@ function TeamEfficiencyBadge({ score }) {
 }
 
 // ── Task Card ─────────────────────────────────────────────────────────────────
-function TaskCard({ task, index }) {
+function TaskCard({ task, index, canEdit, onUpdate, hideEmployee }) {
   const efficiency  = calcEfficiency(task);
   const perf        = perfLabel(efficiency);
   const status      = STATUS_META[task.status];
   const StatusIcon  = status.icon;
   const PerfIcon    = perf.icon;
-  const avatarColor = AVATAR_COLORS[task.avatar] || "#818cf8";
+  const color = avatarColor(task.avatar);
   const barMax      = Math.max(task.estimated, task.spent, 1);
+  const unit = task.timeUnit || "days";
+  const priority = PRIORITY_META[task.priority] || PRIORITY_META.medium;
+  const quickAdds = unit === "days"
+    ? [{ label: "+0,5 gün", amount: 0.5 }, { label: "+1 gün", amount: 1 }]
+    : [{ label: "+30 dk", amount: 0.5 }, { label: "+1 sa", amount: 1 }, { label: "+2 sa", amount: 2 }];
+
+  const addSpent = (amount) => onUpdate?.(task.id, { spent: Math.round((task.spent + amount) * 10) / 10 });
+  const setStatus = (s) => onUpdate?.(task.id, { status: s });
 
   return (
     <motion.div
@@ -314,19 +343,28 @@ function TaskCard({ task, index }) {
       <div className="flex justify-between items-start mb-4 gap-2">
         <div className="flex gap-2.5 items-center min-w-0">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-            style={{ background: `${avatarColor}18`, color: avatarColor, border: `1px solid ${avatarColor}30` }}>
+            style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
             {task.avatar}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate leading-snug">{task.title}</p>
-            <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{task.employee}</p>
+            <p className="text-sm font-semibold text-white leading-snug">{task.title}</p>
+            {!hideEmployee ? (
+              <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{task.employee}</p>
+            ) : null}
+            {task.description ? (
+              <p className="text-xs mt-1 line-clamp-2" style={{ color: "rgba(255,255,255,0.4)" }}>{task.description}</p>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+            style={{ background: `${priority.color}18`, color: priority.color, border: `1px solid ${priority.color}44` }}>
+            {priority.label}
+          </span>
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
             style={{ background: `${status.color}18`, border: `1px solid ${status.color}33`, color: status.color }}>
             <StatusIcon size={10} />
-            {task.status}
+            {status.label || task.status}
           </div>
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
             style={{ background: perf.bg, border: `1px solid ${perf.color}44`, color: perf.color }}>
@@ -336,18 +374,33 @@ function TaskCard({ task, index }) {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-3 text-[10px]">
+        {task.dueDate ? (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg"
+            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
+            <Calendar size={10} />
+            Son: {task.dueDate}
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg"
+          style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
+          <Clock size={10} />
+          {unit === "days" ? "Gün bazlı" : "Saat bazlı"}
+        </span>
+      </div>
+
       {/* Progress bars */}
       <div className="space-y-2.5">
         {[
-          { label: "ESTIMATED", value: task.estimated, pct: (task.estimated / barMax) * 100, barColor: "linear-gradient(90deg,#334155,#64748b)", textColor: "rgba(255,255,255,0.5)", delay: 0.3 },
-          { label: "TIME SPENT", value: task.spent,    pct: (task.spent / barMax) * 100,
+          { label: unit === "days" ? "TAHMİN" : "TAHMİN SÜRE", value: task.estimated, pct: (task.estimated / barMax) * 100, barColor: "linear-gradient(90deg,#334155,#64748b)", textColor: "rgba(255,255,255,0.5)", delay: 0.3 },
+          { label: unit === "days" ? "HARCANAN" : "ÇALIŞILAN", value: task.spent,    pct: (task.spent / barMax) * 100,
             barColor: efficiency === null ? "rgba(107,114,128,0.4)" : efficiency >= 100 ? "linear-gradient(90deg,#059669,#34d399)" : efficiency >= 80 ? "linear-gradient(90deg,#d97706,#fbbf24)" : "linear-gradient(90deg,#dc2626,#f87171)",
             textColor: perf.color, delay: 0.4 },
         ].map(bar => (
           <div key={bar.label}>
             <div className="flex justify-between mb-1">
               <span style={{ color: "rgba(255,255,255,0.25)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em" }}>{bar.label}</span>
-              <span className="text-xs font-bold" style={{ color: bar.textColor }}>{bar.value}d</span>
+              <span className="text-xs font-bold" style={{ color: bar.textColor }}>{formatDuration(bar.value, unit)}</span>
             </div>
             <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
               <motion.div
@@ -361,86 +414,309 @@ function TaskCard({ task, index }) {
           </div>
         ))}
       </div>
+
+      {canEdit && onUpdate ? (
+        <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap gap-2">
+          {quickAdds.map((q) => (
+          <button key={q.label} type="button" onClick={() => addSpent(q.amount)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-300"
+            style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)" }}>
+            {q.label}
+          </button>
+          ))}
+          {["To Do", "In Progress", "Done"].map((s) => (
+            <button key={s} type="button" onClick={() => setStatus(s)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{
+                background: task.status === s ? `${STATUS_META[s].color}22` : "rgba(255,255,255,0.04)",
+                border: `1px solid ${task.status === s ? STATUS_META[s].color + "44" : "rgba(255,255,255,0.08)"}`,
+                color: task.status === s ? STATUS_META[s].color : "rgba(255,255,255,0.4)",
+              }}>
+              {STATUS_META[s].label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </motion.div>
   );
 }
 
 // ── Add Task Modal ────────────────────────────────────────────────────────────
-function AddTaskModal({ team, onClose, onAdd }) {
-  const [form, setForm] = useState({ employee: "", title: "", status: "To Do", estimated: 3, spent: 0 });
-  const up = (k, v) => setForm(f => ({ ...f, [k]: v }));
+const INITIAL_FORM = {
+  employee: "",
+  title: "",
+  description: "",
+  priority: "medium",
+  dueDate: "",
+  timeUnit: "hours",
+  estimated: "8",
+  spent: "0",
+  status: "To Do",
+};
 
-  const handleAdd = () => {
-    if (!form.employee || !form.title) return;
-    const initials = form.employee.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-    onAdd({ ...form, team, avatar: initials, id: Date.now(), estimated: +form.estimated, spent: +form.spent });
+function AddTaskModal({ team, employees, isEmployee, onClose, onSubmit, submitting }) {
+  const [form, setForm] = useState(INITIAL_FORM);
+  const up = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const setTimeUnit = (unit) => {
+    setForm((f) => ({
+      ...f,
+      timeUnit: unit,
+      estimated: unit === "hours" ? (Number(f.estimated) <= 3 ? "8" : f.estimated) : (Number(f.estimated) >= 8 ? "1" : f.estimated),
+    }));
+  };
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!form.title?.trim()) return;
+    if (!isEmployee && !form.employee) return;
+
+    const emp = employees.find((e) => e.name === form.employee);
+    await onSubmit({
+      title: form.title.trim(),
+      description: form.description.trim(),
+      priority: form.priority,
+      dueDate: form.dueDate,
+      timeUnit: form.timeUnit,
+      status: form.status,
+      estimated: parseFloat(form.estimated) || 0,
+      spent: parseFloat(form.spent) || 0,
+      employeeId: emp?.id,
+    });
     onClose();
   };
+
+  const estLabel = form.timeUnit === "days" ? "Tahmini süre (gün)" : "Tahmini süre (saat)";
+  const spentLabel = form.timeUnit === "days" ? "Şimdiye kadar harcanan (gün)" : "Şimdiye kadar çalışılan (saat)";
+  const estStep = form.timeUnit === "hours" ? "0.5" : "0.5";
+  const estPlaceholder = form.timeUnit === "hours" ? "8" : "1";
 
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(6,6,15,0.75)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        onClick={e => e.stopPropagation()}
-        className="rounded-2xl p-7 w-[420px]"
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-2xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         style={{
           background: "#0d0d1f", border: "1px solid rgba(255,255,255,0.1)",
           boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
           fontFamily: "'DM Sans', system-ui, sans-serif",
         }}
       >
-        <div className="flex justify-between items-center mb-6">
-          <span className="text-base font-bold text-white">Add Task — {team}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)" }}>
-            <X size={18} />
-          </button>
-        </div>
+        <form onSubmit={handleAdd}>
+          <div className="flex justify-between items-start mb-6 gap-3">
+            <div>
+              <span className="text-lg font-bold text-white block">
+                {isEmployee ? "Yeni görev ekle" : "Ekibe görev ata"}
+              </span>
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                {isEmployee ? "İşinizi detaylı tanımlayın; süreyi saat veya gün olarak girin." : `Departman: ${team}`}
+              </span>
+            </div>
+            <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <X size={18} />
+            </button>
+          </div>
 
-        {[
-          { label: "Employee Name",  key: "employee",  type: "text",   placeholder: "e.g. Sarah Chen" },
-          { label: "Task Title",     key: "title",     type: "text",   placeholder: "e.g. Design Sprint Kickoff" },
-          { label: "Estimated Days", key: "estimated", type: "number", placeholder: "5" },
-          { label: "Days Spent",     key: "spent",     type: "number", placeholder: "0" },
-        ].map(f => (
-          <div key={f.key} className="mb-4">
-            <label className="block mb-1.5 font-semibold tracking-widest uppercase"
-              style={{ color: "rgba(255,255,255,0.3)", fontSize: "9px", letterSpacing: "0.14em" }}>{f.label}</label>
+          {!isEmployee && employees.length > 0 ? (
+            <div className="mb-4">
+              <label className="field-label">Çalışan *</label>
+              <select
+                required
+                value={form.employee}
+                onChange={(e) => up("employee", e.target.value)}
+                className="field-input"
+              >
+                <option value="">Seçin…</option>
+                {employees
+                  .filter((e) => team === "Tümü" || team === "All" || e.dept === team)
+                  .map((e) => (
+                    <option key={e.id} value={e.name}>{e.name} — {e.dept}</option>
+                  ))}
+              </select>
+            </div>
+          ) : null}
+
+          <div className="mb-4">
+            <label className="field-label">Görev başlığı *</label>
             <input
-              type={f.type} placeholder={f.placeholder} value={form[f.key]}
-              onChange={e => up(f.key, e.target.value)}
-              className="w-full rounded-xl px-3.5 py-2.5 text-sm text-white outline-none"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+              required
+              type="text"
+              placeholder="Örn: Müşteri portalı API entegrasyonu"
+              value={form.title}
+              onChange={(e) => up("title", e.target.value)}
+              className="field-input"
             />
           </div>
-        ))}
 
-        <div className="mb-6">
-          <label className="block mb-1.5 font-semibold tracking-widest uppercase"
-            style={{ color: "rgba(255,255,255,0.3)", fontSize: "9px", letterSpacing: "0.14em" }}>Status</label>
-          <div className="flex gap-2">
-            {["To Do", "In Progress", "Done"].map(s => (
-              <button key={s} onClick={() => up("status", s)}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                style={{
-                  background: form.status === s ? `${STATUS_META[s].color}18` : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${form.status === s ? STATUS_META[s].color + "55" : "rgba(255,255,255,0.08)"}`,
-                  color: form.status === s ? STATUS_META[s].color : "rgba(255,255,255,0.35)",
-                }}>{s}</button>
-            ))}
+          <div className="mb-4">
+            <label className="field-label flex items-center gap-1.5">
+              <AlignLeft size={11} />
+              Açıklama
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Ne yapılacak, kabul kriterleri, notlar…"
+              value={form.description}
+              onChange={(e) => up("description", e.target.value)}
+              className="field-input resize-none"
+            />
           </div>
-        </div>
 
-        <button onClick={handleAdd}
-          className="w-full py-3 rounded-xl text-sm font-bold text-white cursor-pointer"
-          style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", border: "none" }}>
-          Add Task
-        </button>
+          <div className="mb-4">
+            <label className="field-label">Öncelik</label>
+            <div className="flex gap-2">
+              {Object.entries(PRIORITY_META).map(([key, meta]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => up("priority", key)}
+                  className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
+                  style={{
+                    background: form.priority === key ? `${meta.color}22` : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${form.priority === key ? meta.color + "55" : "rgba(255,255,255,0.08)"}`,
+                    color: form.priority === key ? meta.color : "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {meta.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="field-label flex items-center gap-1.5">
+              <Calendar size={11} />
+              Hedef bitiş tarihi (isteğe bağlı)
+            </label>
+            <input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => up("dueDate", e.target.value)}
+              className="field-input"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="field-label flex items-center gap-1.5">
+              <Clock size={11} />
+              Süre birimi
+            </label>
+            <div className="flex gap-2 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {[
+                { id: "hours", label: "Saat" },
+                { id: "days", label: "Gün" },
+              ].map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => setTimeUnit(u.id)}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                  style={{
+                    background: form.timeUnit === u.id ? "rgba(99,102,241,0.35)" : "transparent",
+                    color: form.timeUnit === u.id ? "#c7d2fe" : "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {u.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              {form.timeUnit === "hours"
+                ? "Kısa işler için saat kullanın (ör. 4 saat, 7,5 saat)."
+                : "Uzun işler için gün kullanın (ör. 2 gün, 0,5 gün)."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="field-label">{estLabel}</label>
+              <input
+                type="number"
+                min="0"
+                step={estStep}
+                required
+                placeholder={estPlaceholder}
+                value={form.estimated}
+                onChange={(e) => up("estimated", e.target.value)}
+                className="field-input"
+              />
+            </div>
+            <div>
+              <label className="field-label">{spentLabel}</label>
+              <input
+                type="number"
+                min="0"
+                step={estStep}
+                placeholder="0"
+                value={form.spent}
+                onChange={(e) => up("spent", e.target.value)}
+                className="field-input"
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="field-label">Başlangıç durumu</label>
+            <div className="flex gap-2">
+              {["To Do", "In Progress", "Done"].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => up("status", s)}
+                  className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
+                  style={{
+                    background: form.status === s ? `${STATUS_META[s].color}18` : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${form.status === s ? STATUS_META[s].color + "55" : "rgba(255,255,255,0.08)"}`,
+                    color: form.status === s ? STATUS_META[s].color : "rgba(255,255,255,0.35)",
+                  }}
+                >
+                  {STATUS_META[s].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", border: "none" }}
+          >
+            {submitting ? "Kaydediliyor…" : "Görevi oluştur"}
+          </button>
+        </form>
+
+        <style>{`
+          .field-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.35);
+          }
+          .field-input {
+            width: 100%;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            color: white;
+            outline: none;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+          }
+          .field-input:focus {
+            border-color: rgba(99,102,241,0.5);
+          }
+        `}</style>
       </motion.div>
     </motion.div>
   );
@@ -448,11 +724,24 @@ function AddTaskModal({ team, onClose, onAdd }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  const [tasks,      setTasks]      = useState(TASKS);
-  const [activeTeam, setActiveTeam] = useState("All");
+  const { user } = useAuth();
+  const isEmployee = user?.role === "employee";
+  const { employees } = useManagerEmployees();
+  const { tasks, loading, error, createTask, updateTask } = useTasks();
+  const deptList = useMemo(() => uniqueDepts(employees), [employees]);
+  const teamTabs = useMemo(() => (isEmployee ? [] : ["Tümü", ...deptList]), [isEmployee, deptList]);
+
+  const [activeTeam, setActiveTeam] = useState("Tümü");
   const [search,     setSearch]     = useState("");
   const [showModal,  setShowModal]  = useState(false);
-  const [modalTeam,  setModalTeam]  = useState("Development");
+  const [modalTeam,  setModalTeam]  = useState("Genel");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (deptList.length && modalTeam === "Genel" && !deptList.includes("Genel")) {
+      setModalTeam(deptList[0]);
+    }
+  }, [deptList, modalTeam]);
 
   const globalStats = useMemo(() => {
     const active = tasks.filter(t => t.status === "In Progress").length;
@@ -464,17 +753,43 @@ export default function TasksPage() {
   }, [tasks]);
 
   const filteredTeams = useMemo(() => {
-    const teams = activeTeam === "All" ? ["Development", "Design", "Sales"] : [activeTeam];
-    return teams.map(team => {
-      const teamTasks = tasks
-        .filter(t => t.team === team)
-        .filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.employee.toLowerCase().includes(search.toLowerCase()));
-      return { team, tasks: teamTasks, efficiency: teamEfficiency(teamTasks) };
-    }).filter(g => g.tasks.length > 0);
-  }, [tasks, activeTeam, search]);
+    const match = (t) =>
+      !search ||
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      t.employee.toLowerCase().includes(search.toLowerCase());
 
-  const openModal = team => { setModalTeam(team); setShowModal(true); };
-  const addTask   = task  => setTasks(prev => [...prev, task]);
+    if (isEmployee) {
+      const mine = tasks.filter(match);
+      return mine.length ? [{ team: "Görevlerim", tasks: mine, efficiency: teamEfficiency(mine) }] : [];
+    }
+
+    const teams = activeTeam === "Tümü" ? deptList : [activeTeam];
+    return teams
+      .map((team) => {
+        const teamTasks = tasks.filter((t) => t.team === team).filter(match);
+        return { team, tasks: teamTasks, efficiency: teamEfficiency(teamTasks) };
+      })
+      .filter((g) => g.tasks.length > 0);
+  }, [tasks, activeTeam, search, deptList, isEmployee]);
+
+  const openModal = (team) => { setModalTeam(team); setShowModal(true); };
+
+  const handleCreateTask = async (payload) => {
+    setSubmitting(true);
+    try {
+      await createTask(payload);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdateTask = async (id, patch) => {
+    try {
+      await updateTask(id, patch);
+    } catch {
+      /* useTasks error state */
+    }
+  };
 
   return (
     <Layout>
@@ -489,32 +804,28 @@ export default function TasksPage() {
         }}
       >
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-white tracking-tight">Task Management</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            {isEmployee ? "Görevlerim" : "Görev Yönetimi"}
+          </h1>
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-            Track team efficiency · Real-time performance metrics
+            {isEmployee ? "İşlerinizi ekleyin ve süreleri güncelleyin" : "Ekip verimliliği ve çalışma süreleri"}
           </p>
         </div>
 
-        {/* Live badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
-          style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", color: "#34d399" }}>
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          </span>
-          Live — synced now
-        </div>
-
-        {/* Bell */}
-        <button className="w-9 h-9 rounded-xl flex items-center justify-center relative"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
-          <Bell size={15} style={{ color: "rgba(255,255,255,0.4)" }} />
-          <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-violet-400" />
-        </button>
+        {!isEmployee ? (
+          <>
+            <button className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+              <Bell size={15} style={{ color: "rgba(255,255,255,0.4)" }} />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-violet-400" />
+            </button>
+          </>
+        ) : null}
 
         {/* Add Task CTA */}
         <button
-          onClick={() => openModal(activeTeam === "All" ? "Development" : activeTeam)}
+          onClick={() => openModal(isEmployee ? "Görevlerim" : (activeTeam === "Tümü" ? (deptList[0] || "Genel") : activeTeam))}
+          disabled={!isEmployee && employees.length === 0}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
           style={{
             background: "linear-gradient(135deg, #6366f1, #818cf8)",
@@ -522,7 +833,7 @@ export default function TasksPage() {
             boxShadow: "0 4px 20px rgba(99,102,241,0.35)",
           }}
         >
-          <Plus size={14} /> Add Task
+          <Plus size={14} /> {isEmployee ? "Görev ekle" : "Görev ekle"}
         </button>
       </header>
 
@@ -530,8 +841,19 @@ export default function TasksPage() {
       <div className="px-8 py-7 flex-1 space-y-6"
         style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-        {/* AI Coach */}
-        <AICoachCard tasks={tasks} />
+        {error ? (
+          <div className="rounded-xl px-4 py-3 text-sm text-red-200"
+            style={{ background: "rgba(127,29,29,0.35)", border: "1px solid rgba(248,113,113,0.35)" }}>
+            {error}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <p className="text-sm text-gray-500">Görevler yükleniyor…</p>
+        ) : null}
+
+        {/* AI Coach — yönetici ekibi için */}
+        {!isEmployee && tasks.length > 0 ? <AICoachCard tasks={tasks} /> : null}
 
         {/* KPI row */}
         <motion.div
@@ -539,10 +861,10 @@ export default function TasksPage() {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <StatPill label="Total Tasks"    value={globalStats.total}      sub={`${globalStats.todo} pending`}                                            icon={BarChart3}    color="#818cf8" trend={0}  />
-          <StatPill label="In Progress"    value={globalStats.active}     sub="across all teams"                                                         icon={Flame}        color="#f472b6" trend={1}  />
-          <StatPill label="Completed"      value={globalStats.done}       sub="this sprint"                                                              icon={CheckCircle2} color="#34d399" trend={-1} />
-          <StatPill label="Avg Efficiency" value={`${globalStats.avg}%`}  sub={globalStats.avg >= 100 ? "On target" : "Below target"} icon={Zap}         color="#fbbf24"     trend={globalStats.avg >= 100 ? -1 : 1} />
+          <StatPill label="Toplam görev" value={globalStats.total} sub={`${globalStats.todo} bekleyen`} icon={BarChart3} color="#818cf8" trend={0} />
+          <StatPill label="Devam eden" value={globalStats.active} sub={isEmployee ? "aktif işleriniz" : "tüm ekip"} icon={Flame} color="#f472b6" trend={1} />
+          <StatPill label="Tamamlanan" value={globalStats.done} sub="bu dönem" icon={CheckCircle2} color="#34d399" trend={-1} />
+          <StatPill label="Ort. verim" value={`${globalStats.avg}%`} sub={globalStats.avg >= 100 ? "Hedefte" : "Hedef altı"} icon={Zap} color="#fbbf24" trend={globalStats.avg >= 100 ? -1 : 1} />
         </motion.div>
 
         {/* Filters + Search */}
@@ -550,10 +872,10 @@ export default function TasksPage() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
-          {/* Team tabs */}
+          {!isEmployee && teamTabs.length > 0 ? (
           <div className="flex gap-1 rounded-xl p-1"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            {TEAMS.map(t => (
+            {teamTabs.map(t => (
               <button key={t} onClick={() => setActiveTeam(t)}
                 className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                 style={{
@@ -563,6 +885,7 @@ export default function TasksPage() {
                 }}>{t}</button>
             ))}
           </div>
+          ) : null}
 
           {/* Search */}
           <div className="flex-1 relative">
@@ -570,7 +893,7 @@ export default function TasksPage() {
               style={{ color: "rgba(255,255,255,0.25)" }} />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search tasks or employees…"
+              placeholder={isEmployee ? "Görevlerde ara…" : "Görev veya çalışan ara…"}
               className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
             />
@@ -580,7 +903,7 @@ export default function TasksPage() {
           <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs"
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
             <Filter size={11} />
-            {activeTeam === "All" ? "All teams" : activeTeam}
+            {isEmployee ? "Görevlerim" : activeTeam === "Tümü" ? "Tüm ekip" : activeTeam}
           </div>
         </motion.div>
 
@@ -626,7 +949,16 @@ export default function TasksPage() {
                 {/* Task grid */}
                 <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
                   <AnimatePresence>
-                    {tTasks.map((task, i) => <TaskCard key={task.id} task={task} index={i} />)}
+                    {tTasks.map((task, i) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        index={i}
+                        canEdit={isEmployee ? task.employeeId === user?.id : isManagerRole(user?.role)}
+                        hideEmployee={isEmployee}
+                        onUpdate={handleUpdateTask}
+                      />
+                    ))}
                   </AnimatePresence>
                 </div>
               </motion.div>
@@ -634,17 +966,33 @@ export default function TasksPage() {
           </motion.div>
         </AnimatePresence>
 
-        {filteredTeams.length === 0 && (
+        {!isEmployee && employees.length === 0 && !loading && (
+          <div className="py-16 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+            <Users size={32} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Görev atamak için önce Panel üzerinden personel ekleyin.</p>
+          </div>
+        )}
+
+        {!loading && (isEmployee || employees.length > 0) && filteredTeams.length === 0 && (
           <div className="py-16 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
             <BarChart3 size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No tasks match your search.</p>
+            <p className="text-sm">Aramanızla eşleşen görev yok. Yeni görev ekleyebilirsiniz.</p>
           </div>
         )}
       </div>
 
       {/* Add Task Modal */}
       <AnimatePresence>
-        {showModal && <AddTaskModal team={modalTeam} onClose={() => setShowModal(false)} onAdd={addTask} />}
+        {showModal && (
+          <AddTaskModal
+            team={modalTeam}
+            employees={employees}
+            isEmployee={isEmployee}
+            submitting={submitting}
+            onClose={() => setShowModal(false)}
+            onSubmit={handleCreateTask}
+          />
+        )}
       </AnimatePresence>
     </Layout>
   );

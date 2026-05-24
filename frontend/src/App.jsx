@@ -3,13 +3,17 @@ import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import Dashboard from "./pages/Dashboard";
 import MorningChart from "./pages/MorningChart";
 import Tasks from "./pages/Tasks";
-import Permissions from "./pages/Permissions";
-import Employees from "./pages/Employees";
+import WorkforcePlanning from "./pages/WorkforcePlanning";
 import LoginPage from "./pages/Login";
+import { isManagerRole } from "./utils/roleLabels.js";
+
+function homePath(user) {
+  return isManagerRole(user?.role) ? "/dashboard" : "/tasks";
+}
 
 function LoginRoute() {
-  const { token } = useAuth();
-  if (token) return <Navigate to="/dashboard" replace />;
+  const { token, user } = useAuth();
+  if (token) return <Navigate to={homePath(user)} replace />;
   return <LoginPage />;
 }
 
@@ -19,10 +23,10 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-function HrRoute({ children }) {
+function ManagerRoute({ children }) {
   const { token, user } = useAuth();
   if (!token) return <Navigate to="/" replace />;
-  if (user?.role !== "hr") return <Navigate to="/dashboard" replace />;
+  if (!isManagerRole(user?.role)) return <Navigate to="/tasks" replace />;
   return children;
 }
 
@@ -36,9 +40,9 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ManagerRoute>
                 <Dashboard />
-              </ProtectedRoute>
+              </ManagerRoute>
             }
           />
 
@@ -58,20 +62,13 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/employees" element={<Navigate to="/dashboard" replace />} />
           <Route
-            path="/permissions"
+            path="/workforce"
             element={
-              <ProtectedRoute>
-                <Permissions />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/employees"
-            element={
-              <HrRoute>
-                <Employees />
-              </HrRoute>
+              <ManagerRoute>
+                <WorkforcePlanning />
+              </ManagerRoute>
             }
           />
         </Routes>

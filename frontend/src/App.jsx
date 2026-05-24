@@ -60,7 +60,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/employees" element={<Navigate to="/dashboard" replace />} />
           <Route
             path="/workforce"
             element={

@@ -119,8 +119,6 @@ export function summarizeCheckInsForAi(checkIns) {
       expectedArrival: c.expectedArrival,
       commuteMethod: c.commuteMethod,
       workMode: c.workMode,
-      note: c.note,
-      daySummary: c.daySummary,
       energyLevel: c.energyLevel,
     })),
   };
@@ -131,6 +129,50 @@ const TASK_STATUS_TR = {
   "In Progress": "Devam ediyor",
   Done: "Tamamlandı",
 };
+
+export function summarizeTasksForAi(tasks) {
+  const byTeam = {};
+  tasks.forEach((t) => {
+    const team = t.team || "Genel";
+    if (!byTeam[team]) byTeam[team] = { tasks: [], efficiencies: [] };
+    byTeam[team].tasks.push({
+      title: t.title,
+      status: t.status,
+      employee: t.employee,
+      estimated: t.estimated,
+      spent: t.spent,
+      priority: t.priority,
+    });
+    if (t.status !== "To Do" && t.spent && t.estimated) {
+      byTeam[team].efficiencies.push(Math.round((t.estimated / t.spent) * 100));
+    }
+  });
+  Object.keys(byTeam).forEach((team) => {
+    const e = byTeam[team].efficiencies;
+    byTeam[team].avgEfficiency = e.length ? Math.round(e.reduce((a, b) => a + b, 0) / e.length) : null;
+    delete byTeam[team].efficiencies;
+  });
+  return { total: tasks.length, byTeam };
+}
+
+export function summarizeTasksForAiTr(tasks) {
+  const raw = summarizeTasksForAi(tasks);
+  const byTeam = {};
+  Object.entries(raw.byTeam || {}).forEach(([team, v]) => {
+    byTeam[team] = {
+      ortalamaVerimlilikYuzde: v.avgEfficiency,
+      gorevler: (v.tasks || []).map((t) => ({
+        baslik: t.title,
+        durum: TASK_STATUS_TR[t.status] || t.status,
+        calisan: t.employee,
+        tahminiSaat: t.estimated,
+        harcananSaat: t.spent,
+        oncelik: t.priority,
+      })),
+    };
+  });
+  return { toplamGorev: raw.total, departmanlaraGore: byTeam };
+}
 
 export function workforcePayloadForAi(context) {
   return {
@@ -193,55 +235,110 @@ export function summarizeCheckInsForAiTr(checkIns) {
       beklenenGiris: c.expectedArrival,
       ulasim: c.commuteMethod,
       calismaModu: c.workMode,
-      not: c.note,
-      gunOzeti: c.daySummary,
       enerji: c.energyLevel,
     })),
   };
 }
 
-export function summarizeTasksForAiTr(tasks) {
-  const raw = summarizeTasksForAi(tasks);
-  const byTeam = {};
-  Object.entries(raw.byTeam || {}).forEach(([team, v]) => {
-    byTeam[team] = {
-      ortalamaVerimlilikYuzde: v.avgEfficiency,
-      gorevler: (v.tasks || []).map((t) => ({
-        baslik: t.title,
-        durum: TASK_STATUS_TR[t.status] || t.status,
-        calisan: t.employee,
-        tahminiSaat: t.estimated,
-        harcananSaat: t.spent,
-        oncelik: t.priority,
-      })),
-    };
-  });
-  return { toplamGorev: raw.total, departmanlaraGore: byTeam };
+const GECIKME_KATEGORI_TR = {
+  traffic: "Trafik",
+  health: "Sağlık",
+  family: "Aile",
+  technical: "Teknik",
+  ontime: "Zamanında",
+};
+
+function topCategories(categories, limit = 3) {
+  return Object.entries(categories || {})
+    .filter(([k]) => k !== "ontime")
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([k, n]) => ({ neden: GECIKME_KATEGORI_TR[k] || k, adet: n }));
 }
 
-export function summarizeTasksForAi(tasks) {
-  const byTeam = {};
-  tasks.forEach((t) => {
-    const team = t.team || "Genel";
-    if (!byTeam[team]) byTeam[team] = { tasks: [], efficiencies: [] };
-    byTeam[team].tasks.push({
-      title: t.title,
-      status: t.status,
-      employee: t.employee,
-      estimated: t.estimated,
-      spent: t.spent,
-      priority: t.priority,
-    });
-    if (t.status !== "To Do" && t.spent && t.estimated) {
-      byTeam[team].efficiencies.push(Math.round((t.estimated / t.spent) * 100));
+/** Sabah girişi AI özeti — kayıt sayısı payı yok; gecikme ve devam odaklı */
+export function summarizeMorningAttendanceForAiTr(checkIns) {
+  const dates = checkIns.map((c) => c.date).filter(Boolean).sort();
+  const lateRows = checkIns.filter((c) => (c.delta || 0) > 0);
+  const delays = lateRows.map((c) => c.delta);
+  const onTimeCount = checkIns.length - lateRows.length;
+
+  const gecikmeNedenleri = {};
+  checkIns.forEach((c) => {
+    const cat = c.category || "ontime";
+    const label = GECIKME_KATEGORI_TR[cat] || cat;
+    gecikmeNedenleri[label] = (gecikmeNedenleri[label] || 0) + 1;
+  });
+
+  const deptStats = {};
+  checkIns.forEach((c) => {
+    const dept = c.dept || "Genel";
+    if (!deptStats[dept]) {
+      deptStats[dept] = { gecKalan: 0, gecikmeToplami: 0, gecikmeDegerleri: [], kategoriler: {} };
+    }
+    const s = deptStats[dept];
+    const cat = c.category || "ontime";
+    s.kategoriler[cat] = (s.kategoriler[cat] || 0) + 1;
+    if ((c.delta || 0) > 0) {
+      s.gecKalan += 1;
+      s.gecikmeToplami += c.delta;
+      s.gecikmeDegerleri.push(c.delta);
     }
   });
 
-  Object.keys(byTeam).forEach((team) => {
-    const e = byTeam[team].efficiencies;
-    byTeam[team].avgEfficiency = e.length ? Math.round(e.reduce((a, b) => a + b, 0) / e.length) : null;
-    delete byTeam[team].efficiencies;
-  });
+  const departmanGecikme = Object.entries(deptStats)
+    .map(([departman, s]) => {
+      const deptRows = checkIns.filter((c) => (c.dept || "Genel") === departman);
+      const deptLate = deptRows.filter((c) => (c.delta || 0) > 0);
+      const gecikmeOraniYuzde = deptRows.length
+        ? Math.round((deptLate.length / deptRows.length) * 100)
+        : 0;
+      return {
+        departman,
+        gecikmeOraniYuzde,
+        ortalamaGecikmeDk: deptLate.length
+          ? Math.round(s.gecikmeToplami / deptLate.length)
+          : 0,
+        enYuksekGecikmeDk: s.gecikmeDegerleri.length ? Math.max(...s.gecikmeDegerleri) : 0,
+        baskinGecikmeNedenleri: topCategories(s.kategoriler),
+      };
+    })
+    .sort((a, b) => b.gecikmeOraniYuzde - a.gecikmeOraniYuzde);
 
-  return { total: tasks.length, byTeam };
+  const kritikOrnekler = [...lateRows]
+    .sort((a, b) => (b.delta || 0) - (a.delta || 0))
+    .slice(0, 8)
+    .map((c) => ({
+      tarih: c.date,
+      departman: c.dept,
+      ad: c.name,
+      giris: c.arrival,
+      gecikmeDk: c.delta,
+      neden: GECIKME_KATEGORI_TR[c.category] || c.category,
+    }));
+
+  const severeCount = lateRows.filter((c) => (c.delta || 0) >= 30).length;
+
+  return {
+    donem: {
+      baslangic: dates[0] || null,
+      bitis: dates[dates.length - 1] || null,
+      gunSayisi: new Set(dates).size,
+    },
+    genelOzet: {
+      zamanindaGiris: onTimeCount,
+      gecKalanGiris: lateRows.length,
+      gecikmeOraniYuzde: checkIns.length
+        ? Math.round((lateRows.length / checkIns.length) * 100)
+        : 0,
+      ortalamaGecikmeDk: delays.length
+        ? Math.round(delays.reduce((a, b) => a + b, 0) / delays.length)
+        : 0,
+      enYuksekGecikmeDk: delays.length ? Math.max(...delays) : 0,
+      otuzDakikaUstuGecikme: severeCount,
+    },
+    gecikmeNedenleriDagilimi: gecikmeNedenleri,
+    departmanGecikmeKarsilastirmasi: departmanGecikme,
+    kritikOrnekler,
+  };
 }

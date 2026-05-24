@@ -24,9 +24,10 @@ export async function listCheckIns(req, res) {
       filter.date = String(date);
     } else {
       const lookback = Math.min(Number(days) || 30, 90);
-      const since = new Date();
-      since.setDate(since.getDate() - lookback);
-      filter.createdAt = { $gte: since };
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - (lookback - 1));
+      filter.date = { $gte: todayKey(start), $lte: todayKey(end) };
     }
 
     const rows = await CheckIn.find(filter)
@@ -51,8 +52,6 @@ export async function upsertTodayCheckIn(req, res) {
       category,
       commuteMethod,
       workMode,
-      note,
-      daySummary,
       energyLevel,
     } = req.body ?? {};
 
@@ -64,7 +63,7 @@ export async function upsertTodayCheckIn(req, res) {
 
     const arrival = parseTime(arrivalTime);
     const hasEveningFields =
-      departureTime !== undefined || daySummary !== undefined || energyLevel !== undefined;
+      departureTime !== undefined || energyLevel !== undefined;
 
     if (!arrival && hasEveningFields && !existing) {
       return res.status(400).json({ message: "Önce sabah giriş saatini kaydedin" });
@@ -95,12 +94,8 @@ export async function upsertTodayCheckIn(req, res) {
 
     if (workMode !== undefined) {
       const modes = ["office", "remote", ""];
-      const mode = workMode === "hybrid" ? "office" : workMode;
-      patch.workMode = modes.includes(mode) ? mode : "office";
+      patch.workMode = modes.includes(workMode) ? workMode : "office";
     }
-
-    if (note !== undefined) patch.note = String(note || "").slice(0, 500);
-    if (daySummary !== undefined) patch.daySummary = String(daySummary || "").slice(0, 1000);
 
     if (energyLevel !== undefined && energyLevel !== null && energyLevel !== "") {
       const n = Number(energyLevel);
@@ -114,10 +109,6 @@ export async function upsertTodayCheckIn(req, res) {
         $setOnInsert: {
           employeeId: scope.user._id,
           date,
-          arrivalTime: patch.arrivalTime || "09:00",
-          expectedArrival: expected,
-          delayMinutes: 0,
-          category: "ontime",
         },
       },
       { upsert: true, new: true, runValidators: true },
@@ -143,12 +134,10 @@ function formatCheckIn(row) {
     departure: row.departureTime || "",
     expectedArrival: row.expectedArrival || "09:00",
     commuteMethod: row.commuteMethod || "",
-    workMode: row.workMode === "hybrid" ? "office" : row.workMode || "office",
+    workMode: row.workMode || "office",
     avatar: employeeInitialsFromUser(emp),
     delta: row.delayMinutes,
     date: row.date,
-    note: row.note || "",
-    daySummary: row.daySummary || "",
     energyLevel: row.energyLevel ?? null,
   };
 }

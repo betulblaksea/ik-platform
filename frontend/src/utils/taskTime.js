@@ -1,9 +1,5 @@
-export function formatDuration(value, unit = "hours") {
+export function formatDuration(value) {
   const v = Number(value) || 0;
-  if (unit === "days") {
-    if (v === 1) return "1 gün";
-    return `${v} gün`;
-  }
   if (v < 1) return `${Math.round(v * 60)} dk`;
   if (v === 1) return "1 saat";
   const h = Math.floor(v);

@@ -43,10 +43,5 @@ export function useTasks() {
     return data.task;
   };
 
-  const deleteTask = async (id) => {
-    await apiFetch(`/api/tasks/${id}`, { token, method: "DELETE" });
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  return { tasks, loading, error, reload, createTask, updateTask, deleteTask, setTasks };
+  return { tasks, loading, error, reload, createTask, updateTask };
 }

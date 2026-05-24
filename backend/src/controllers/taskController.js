@@ -24,21 +24,10 @@ export async function createTask(req, res) {
     const scope = await getTeamScope(req);
     if (!scope) return res.status(401).json({ message: "Yetkisiz" });
 
-    const {
-      title,
-      description,
-      priority,
-      dueDate,
-      timeUnit,
-      status,
-      estimated,
-      spent,
-      employeeId: bodyEmployeeId,
-    } = req.body ?? {};
+    const { title, description, priority, dueDate, estimated, employeeId: bodyEmployeeId } = req.body ?? {};
     if (!title?.trim()) {
       return res.status(400).json({ message: "Görev başlığı zorunludur" });
     }
-    const unit = timeUnit === "days" ? "days" : "hours";
 
     let targetId = scope.user._id;
     if (scope.role === "manager") {
@@ -61,10 +50,9 @@ export async function createTask(req, res) {
       description: String(description || "").trim(),
       priority: ["low", "medium", "high"].includes(priority) ? priority : "medium",
       dueDate: dueDate ? String(dueDate) : "",
-      timeUnit: unit,
-      status: status || "To Do",
-      estimated: Number(estimated) >= 0 ? Number(estimated) : unit === "hours" ? 8 : 1,
-      spent: Number(spent) >= 0 ? Number(spent) : 0,
+      status: "To Do",
+      estimated: Number(estimated) >= 0 ? Number(estimated) : 8,
+      spent: 0,
       team: employee.dept || "Genel",
     });
 
@@ -93,7 +81,7 @@ export async function updateTask(req, res) {
     const isCreator = creatorId === scope.user._id.toString();
     const isAssignee = assigneeId === scope.user._id.toString();
 
-    const { title, description, priority, dueDate, timeUnit, status, estimated, spent } = req.body ?? {};
+    const { title, description, priority, dueDate, status, estimated, spent } = req.body ?? {};
 
     if (!isCreator && !isAssignee) {
       return res.status(403).json({ message: "Bu görevi güncelleyemezsiniz" });
@@ -110,7 +98,6 @@ export async function updateTask(req, res) {
       if (description != null) task.description = String(description).trim();
       if (priority != null && ["low", "medium", "high"].includes(priority)) task.priority = priority;
       if (dueDate != null) task.dueDate = String(dueDate);
-      if (timeUnit != null && ["hours", "days"].includes(timeUnit)) task.timeUnit = timeUnit;
       if (status != null) task.status = status;
       if (estimated != null) task.estimated = Math.max(0, Number(estimated));
       if (spent != null) task.spent = Math.max(0, Number(spent));
@@ -124,26 +111,6 @@ export async function updateTask(req, res) {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Görev güncellenemedi" });
-  }
-}
-
-export async function deleteTask(req, res) {
-  try {
-    const scope = await getTeamScope(req);
-    if (!scope) return res.status(401).json({ message: "Yetkisiz" });
-
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
-
-    if (!scope.employeeIds.some((id) => id.toString() === task.employeeId.toString())) {
-      return res.status(403).json({ message: "Bu göreve erişim yok" });
-    }
-
-    await task.deleteOne();
-    return res.json({ message: "Görev silindi" });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Görev silinemedi" });
   }
 }
 
@@ -162,7 +129,6 @@ function formatTask(task) {
     description: task.description || "",
     priority: task.priority || "medium",
     dueDate: task.dueDate || "",
-    timeUnit: task.timeUnit || "days",
     status: task.status,
     estimated: task.estimated,
     spent: task.spent,

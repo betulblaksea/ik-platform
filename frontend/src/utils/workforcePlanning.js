@@ -1,4 +1,4 @@
-import { avgEfficiency, teamEfficiency } from "./taskMetrics.js";
+import { teamEfficiency } from "./taskMetrics.js";
 
 export function buildWorkforcePlanningContext({
   goalText = "",

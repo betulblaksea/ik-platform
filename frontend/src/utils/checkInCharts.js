@@ -76,3 +76,30 @@ export function deltaColor(d) {
   if (d < 30) return "#f59e0b";
   return "#ef4444";
 }
+
+export function groupCheckInsByEmployee(records) {
+  const map = new Map();
+  for (const r of records) {
+    const key = r.employeeId || r.name || "unknown";
+    if (!map.has(key)) {
+      map.set(key, {
+        employeeId: key,
+        name: r.name || "Çalışan",
+        dept: r.dept || "",
+        avatar: r.avatar || "??",
+        records: [],
+      });
+    }
+    map.get(key).records.push(r);
+  }
+  return [...map.values()]
+    .map((g) => ({
+      ...g,
+      records: g.records.sort(
+        (a, b) =>
+          (b.date || "").localeCompare(a.date || "") ||
+          (a.arrival || "").localeCompare(b.arrival || ""),
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+}

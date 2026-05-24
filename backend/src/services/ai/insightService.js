@@ -2,7 +2,7 @@ import { chatJson, isAiConfigured, getAiInfo } from "./llmClient.js";
 import {
   buildWorkforcePlanningContext,
   workforcePayloadForAi,
-  summarizeCheckInsForAiTr,
+  summarizeMorningAttendanceForAiTr,
   summarizeTasksForAiTr,
 } from "./planningContext.js";
 
@@ -40,6 +40,39 @@ const EXAMPLE_JSON = `Örnek (buna benzer Türkçe yaz):
 const BASE_SYSTEM = `Sen Türkçe yazan bir İK ve operasyon yapay zeka danışmanısın.
 ${TURKISH_RULES}
 ${EXAMPLE_JSON}
+${INSIGHT_SCHEMA}`;
+
+const MORNING_TURKISH_RULES = `ZORUNLU DİL KURALLARI:
+- title, observation, analysis, suggestion, metrics alanları tamamen Türkçe.
+- İngilizce terim kullanma.
+- Verideki departman adlarını aynen kullan; uydurma ekleme.`;
+
+const MORNING_EXAMPLE = `Örnek (buna benzer Türkçe yaz):
+{
+  "title": "Haftalık giriş ve gecikme özeti",
+  "observation": "Son 7 günde girişlerin %22'sinde gecikme var; ortalama 14 dk. Trafik ve teknik nedenler baskın. Mühendislik gecikme oranı %31 ile öne çıkıyor; Güvenlik %9 ile en düşük.",
+  "analysis": "30 dk üzeri 4 kayıt var; çoğu salı ve perşembe sabahları. Trafik kategorisi toplam gecikmelerin yarısını oluşturuyor.",
+  "suggestion": "09:00 öncesi esnek 15 dk penceresi ve trafik yoğun günlerde uzaktan çalışma hatırlatması değerlendirilebilir.",
+  "metrics": [{"label": "Gecikme oranı", "value": "%22"}, {"label": "Ort. gecikme", "value": "14 dk"}],
+  "actions": [],
+  "delayRiskPct": 28,
+  "budgetHint": null
+}`;
+
+const MORNING_SYSTEM = `Sen Türkçe yazan bir İK devam ve çalışma saati analistisin.
+${MORNING_TURKISH_RULES}
+
+KAPSAM — YALNIZCA giriş/çıkış saati, gecikme (dakika), gecikme nedeni kategorileri ve zamanında gelme:
+- departmanGecikmeKarsilastirmasi içinde gecikmeOraniYuzde, ortalamaGecikmeDk kullan.
+- genelOzet ve gecikmeNedenleriDagilimi kullan.
+
+YASAK — bunları yazma veya önerme:
+- Departmanlar arası kayıt sayısı, kayıt payı veya "X kayıt / %Y" karşılaştırması (kayıt hacmi analiz konusu değil).
+- Yük, kapasite, verimlilik, görev, transfer, işe alım, bütçe, kadro planı.
+- Veride olmayan çıkarımlar.
+
+actions dizisi her zaman boş [] bırak.
+${MORNING_EXAMPLE}
 ${INSIGHT_SCHEMA}`;
 
 const USER_LANG_FOOTER =
@@ -80,15 +113,18 @@ ${JSON.stringify(veri, null, 2)}${USER_LANG_FOOTER}`;
 }
 
 export async function generateMorningInsightFromData(checkIns) {
-  const veri = summarizeCheckInsForAiTr(checkIns);
-  const user = `Sabah girişi ve çalışma saati analizi. Veri:
+  if (!checkIns?.length) return null;
+  const veri = summarizeMorningAttendanceForAiTr(checkIns);
+  const user = `Sabah girişi ve çalışma saati analizi üret. Veri yalnızca gecikme ve devam metrikleridir; kayıt sayısı payını yorumlama.
 ${JSON.stringify(veri, null, 2)}${USER_LANG_FOOTER}`;
-  return generateInsight(BASE_SYSTEM, user, 0.5);
+  const insight = await generateInsight(MORNING_SYSTEM, user, 0.45);
+  return { ...insight, actions: [] };
 }
 
 export async function generateTasksCoachInsight(tasks) {
+  if (!tasks?.length) return null;
   const veri = summarizeTasksForAiTr(tasks);
-  const user = `Görev koçluğu ve verimlilik analizi. Veri:
+  const user = `Görev yönetimi ve ekip iş yükü analizi. Veri:
 ${JSON.stringify(veri, null, 2)}${USER_LANG_FOOTER}`;
   return generateInsight(BASE_SYSTEM, user, 0.5);
 }

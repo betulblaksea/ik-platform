@@ -23,8 +23,6 @@ const checkInSchema = new mongoose.Schema(
       enum: ["office", "remote", ""],
       default: "office",
     },
-    note: { type: String, default: "" },
-    daySummary: { type: String, default: "" },
     energyLevel: { type: Number, min: 1, max: 5, default: null },
   },
   { timestamps: true },

@@ -9,9 +9,3 @@ export function teamEfficiency(tasks) {
   if (!scored.length) return null;
   return Math.round(scored.reduce((s, t) => s + calcEfficiency(t), 0) / scored.length);
 }
-
-export function avgEfficiency(tasks) {
-  const scored = tasks.filter((t) => calcEfficiency(t) !== null);
-  if (!scored.length) return null;
-  return Math.round(scored.reduce((s, t) => s + calcEfficiency(t), 0) / scored.length);
-}

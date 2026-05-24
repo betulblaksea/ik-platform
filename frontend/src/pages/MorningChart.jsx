@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
@@ -18,7 +18,9 @@ import {
   buildArrivalBars,
   formatDelta,
   deltaColor,
+  groupCheckInsByEmployee,
 } from "../utils/checkInCharts.js";
+import { slimCheckInsForAi } from "../utils/aiPayload.js";
 
 const TODAY = new Date().toLocaleDateString("tr-TR", {
   weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -116,7 +118,7 @@ function DonutChart({ segments, total, activeCategory, onSelect, centerLabel = "
   );
 }
 
-function BarChart({ barData }) {
+function BarChart({ barData, rangeLabel }) {
   const [hovered, setHovered] = useState(null);
   const BAR_COLORS = ["#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#ec4899"];
   const barMax = Math.max(...barData.map((d) => d.count), 1);
@@ -177,7 +179,7 @@ function BarChart({ barData }) {
 
       <div className="flex justify-between mt-3 px-1">
         <span className="bar-footer-hint">30 dk aralıklar</span>
-        <span className="bar-footer-hint">Son 30 gün</span>
+        <span className="bar-footer-hint">{rangeLabel}</span>
       </div>
     </div>
   );
@@ -198,7 +200,6 @@ function PersonalHistoryRow({ record, index }) {
         <p className="text-xs chart-card__subtitle">
           {record.arrival} giriş
           {record.departure ? ` · ${record.departure} çıkış` : ""}
-          {record.daySummary ? " · özet var" : ""}
         </p>
       </div>
       <div
@@ -218,50 +219,81 @@ function PersonalHistoryRow({ record, index }) {
   );
 }
 
-function EmployeeRow({ emp, index }) {
-  const cat = LATE_CATEGORIES[emp.category] || LATE_CATEGORIES.ontime;
-  const Icon = cat.icon;
+const RANGE_TABS = [
+  { id: "today", label: "Bugün" },
+  { id: "week", label: "Son 1 hafta" },
+];
 
+function RangeTabs({ value, onChange }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="row-card group transition-all"
-    >
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 category-badge"
-        style={{ "--cat-bg": cat.bg, "--cat-color": cat.color }}
-      >
-        {emp.avatar}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white truncate">{emp.name}</p>
-        <p className="text-xs chart-card__subtitle truncate">{emp.dept}</p>
-      </div>
-
-      <div
-        className="hidden sm:flex category-badge font-medium px-2.5 py-1"
-        style={{ "--cat-bg": cat.bg, "--cat-color": cat.color }}
-      >
-        <Icon size={11} />
-        {cat.label}
-      </div>
-
-      <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
-        <Clock size={11} className="text-white/30" />
-        <span className="font-mono font-semibold text-white">{emp.arrival}</span>
-      </div>
-
-      <span
-        className="delta-value flex-shrink-0 w-28 text-right"
-        style={{ "--delta-color": deltaColor(emp.delta) }}
-      >
-        {formatDelta(emp.delta)}
-      </span>
-    </motion.div>
+    <div className="filter-tabs">
+      {RANGE_TABS.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onChange(tab.id)}
+          className={`filter-tab ${value === tab.id ? "filter-tab--active" : ""}`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
   );
+}
+
+function EmployeeGroup({ group, startIndex }) {
+  return (
+    <div className="checkin-employee-group">
+      <div className="checkin-employee-group__header">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold category-badge"
+          style={{
+            "--cat-bg": "rgba(96,165,250,0.12)",
+            "--cat-color": "#93c5fd",
+          }}
+        >
+          {group.avatar}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white">{group.name}</p>
+          <p className="text-xs chart-card__subtitle">
+            {group.dept} · {group.records.length} kayıt
+          </p>
+        </div>
+      </div>
+      <div className="space-y-1.5 pl-1">
+        {group.records.map((r, i) => (
+          <PersonalHistoryRow key={r.id} record={r} index={startIndex + i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MorningAiInsight({ checkIns, range, dataLoading }) {
+  const { run, loading, error, insight, setInsight } = useAiInsight();
+
+  const refresh = useCallback(() => {
+    if (!checkIns.length) return;
+    run("morning", { checkIns: slimCheckInsForAi(checkIns) }).catch(() => {});
+  }, [run, checkIns]);
+
+  useEffect(() => {
+    setInsight(null);
+  }, [range, setInsight]);
+
+  useEffect(() => {
+    if (dataLoading) return;
+    if (!checkIns.length) {
+      setInsight(null);
+      return;
+    }
+    const timer = setTimeout(refresh, 800);
+    return () => clearTimeout(timer);
+  }, [refresh, checkIns, dataLoading, range, setInsight]);
+
+  if (dataLoading || !checkIns.length) return null;
+  return <AiAnalysisNote insight={insight} loading={loading} error={error} />;
 }
 
 function StatPill({ label, value, sub, icon: Icon, color }) {
@@ -282,15 +314,24 @@ function StatPill({ label, value, sub, icon: Icon, color }) {
 export default function MorningChart() {
   const { user } = useAuth();
   const isEmployee = user?.role === "employee";
-  const { checkIns, loading, error, saveToday } = useCheckIns({ days: 30 });
+  const today = todayKey();
+  const [range, setRange] = useState(isEmployee ? "week" : "today");
+  const checkInQuery = range === "today" ? { date: today } : { days: 7 };
+  const { checkIns, loading, error, saveToday, reload } = useCheckIns(checkInQuery);
   const { run, loading: aiLoading, error: aiError, insight: aiInsight } = useAiInsight();
   const [activeCategory, setActiveCategory] = useState(null);
   const [saving, setSaving] = useState(false);
-  const today = todayKey();
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    setActiveCategory(null);
+  }, [range]);
+
   const todayRecord = checkIns.find((c) => c.date === today);
   const lateList = useMemo(() => checkIns.filter((c) => c.delta > 0), [checkIns]);
   const donutSegments = useMemo(() => buildCategoryDonut(checkIns), [checkIns]);
   const barData = useMemo(() => buildArrivalBars(checkIns), [checkIns]);
+  const rangeLabel = range === "today" ? "Bugün" : "Son 7 gün";
 
   const onTimeCount = checkIns.filter((c) => !c.delta).length;
   const lateCount = lateList.length;
@@ -298,13 +339,15 @@ export default function MorningChart() {
     ? Math.round(lateList.reduce((s, c) => s + c.delta, 0) / lateCount)
     : 0;
 
-  const filtered = activeCategory
-    ? checkIns.filter((c) => c.category === activeCategory)
-    : isEmployee
-      ? checkIns
-      : lateList.length
-        ? lateList
-        : checkIns;
+  const filtered = useMemo(() => {
+    if (!activeCategory) return checkIns;
+    return checkIns.filter((c) => c.category === activeCategory);
+  }, [checkIns, activeCategory]);
+
+  const employeeGroups = useMemo(
+    () => (isEmployee ? [] : groupCheckInsByEmployee(filtered)),
+    [filtered, isEmployee],
+  );
 
   const handleDonutClick = (key) => {
     setActiveCategory((prev) => (prev === key ? null : key));
@@ -312,20 +355,16 @@ export default function MorningChart() {
 
   const handleSaveCheckIn = async (payload) => {
     setSaving(true);
+    setSaveError("");
     try {
-      await saveToday(payload);
+      return await saveToday(payload);
+    } catch (err) {
+      setSaveError(err.message || "Kayıt kaydedilemedi");
+      throw err;
     } finally {
       setSaving(false);
     }
   };
-
-  useEffect(() => {
-    if (isEmployee || loading) return;
-    const timer = setTimeout(() => {
-      run("morning", { checkIns }).catch(() => {});
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [checkIns.length, isEmployee, loading, run]);
 
   const activeCatMeta = activeCategory
     ? (LATE_CATEGORIES[activeCategory] || LATE_CATEGORIES.ontime)
@@ -340,6 +379,7 @@ export default function MorningChart() {
           </h1>
           <p className="page-header__subtitle">{TODAY}</p>
         </div>
+        <RangeTabs value={range} onChange={setRange} />
       </header>
 
       <div className="page-body space-y-6">
@@ -350,7 +390,11 @@ export default function MorningChart() {
 
         {isEmployee ? (
           <>
-            <WorkTimeLogForm todayRecord={todayRecord} onSave={handleSaveCheckIn} saving={saving} />
+            {saveError ? <div className="alert-error">{saveError}</div> : null}
+            <WorkTimeLogForm todayRecord={todayRecord} onSave={async (p) => {
+              await handleSaveCheckIn(p);
+              reload();
+            }} saving={saving} />
             {checkIns.length > 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -358,7 +402,7 @@ export default function MorningChart() {
                 className="glass-panel"
               >
                 <h2 className="text-sm font-bold text-white mb-1">Giriş geçmişim</h2>
-                <p className="chart-card__subtitle mb-4">Son kayıtlarınız</p>
+                <p className="chart-card__subtitle mb-4">{rangeLabel}</p>
                 <div className="space-y-2">
                   {checkIns
                     .slice()
@@ -374,7 +418,7 @@ export default function MorningChart() {
 
         {!isEmployee ? (
         <>
-        <AiAnalysisNote insight={aiInsight} loading={aiLoading} error={aiError} />
+        <MorningAiInsight checkIns={checkIns} range={range} dataLoading={loading} />
 
         <motion.div
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"
@@ -382,7 +426,7 @@ export default function MorningChart() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <StatPill label={isEmployee ? "Toplam kayıt" : "Giriş kaydı"} value={checkIns.length} sub="Son 30 gün" icon={Users} color="#3b82f6" />
+          <StatPill label={isEmployee ? "Toplam kayıt" : "Giriş kaydı"} value={checkIns.length} sub={rangeLabel} icon={Users} color="#3b82f6" />
           <StatPill label="Zamanında" value={onTimeCount} sub="Gecikmesiz" icon={Clock} color="#10b981" />
           <StatPill label="Geç kalma" value={lateCount} sub="Kayıtlı gecikme" icon={AlertTriangle} color="#f59e0b" />
           <StatPill label="Ort. gecikme" value={lateCount ? `${avgDelay} dk` : "—"} sub="Geç kalanlar" icon={TrendingUp} color="#8b5cf6" />
@@ -482,11 +526,11 @@ export default function MorningChart() {
               </div>
               <div className="badge-pill">
                 <Calendar size={11} />
-                Bugün
+                {rangeLabel}
               </div>
             </div>
 
-            <BarChart barData={barData} />
+            <BarChart barData={barData} rangeLabel={rangeLabel} />
 
             {barData[0] && (
               <div className="peak-hour-box">
@@ -513,7 +557,7 @@ export default function MorningChart() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">
-                {isEmployee ? "Giriş geçmişim" : "Geç kalanlar / girişler"}
+                Çalışanlara göre girişler
                 {activeCatMeta && (
                   <span
                     className="ml-2 category-badge text-xs"
@@ -524,7 +568,7 @@ export default function MorningChart() {
                 )}
               </h2>
               <p className="chart-card__subtitle">
-                {filtered.length} kayıt · tarihe göre
+                {employeeGroups.length} çalışan · {filtered.length} kayıt · {rangeLabel}
               </p>
             </div>
 
@@ -545,13 +589,15 @@ export default function MorningChart() {
           </div>
 
           <AnimatePresence mode="popLayout">
-            <div className="space-y-1.5">
-              {filtered
-                .slice()
-                .sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.arrival.localeCompare(b.arrival))
-                .map((emp, i) => (
-                  <EmployeeRow key={emp.id} emp={emp} index={i} />
-                ))}
+            <div className="space-y-5">
+              {employeeGroups.map((group, gi) => {
+                const startIndex = employeeGroups
+                  .slice(0, gi)
+                  .reduce((n, g) => n + g.records.length, 0);
+                return (
+                  <EmployeeGroup key={group.employeeId} group={group} startIndex={startIndex} />
+                );
+              })}
             </div>
           </AnimatePresence>
 

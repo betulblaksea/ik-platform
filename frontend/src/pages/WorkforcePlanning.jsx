@@ -12,6 +12,7 @@ import { useTasks } from "../hooks/useTasks.js";
 import { useCheckIns } from "../hooks/useCheckIns.js";
 import AiAnalysisNote from "../components/AiAnalysisNote.jsx";
 import { buildWorkforcePlanningContext } from "../utils/workforcePlanning.js";
+import { slimCheckInsForAi, slimEmployeesForAi, slimTasksForAi } from "../utils/aiPayload.js";
 import { useAiInsight } from "../hooks/useAiInsight.js";
 
 const FOCUS_OPTIONS = [
@@ -119,19 +120,24 @@ export default function WorkforcePlanning() {
     [goal, months, projectCount, focus, budget, tasks, checkIns, employees],
   );
 
-  const runAnalysis = useCallback(async () => {
-    if (!goal.trim()) return;
-    await run("workforce", {
+  const aiInput = useMemo(
+    () => ({
       goalText: goal,
       horizonMonths: months,
       newProjectCount: projectCount,
       focus,
       monthlyBudgetTry: budget ? Number(budget) : null,
-      tasks,
-      checkIns,
-      employees,
-    });
-  }, [run, goal, months, projectCount, focus, budget, tasks, checkIns, employees]);
+      tasks: slimTasksForAi(tasks),
+      checkIns: slimCheckInsForAi(checkIns),
+      employees: slimEmployeesForAi(employees),
+    }),
+    [goal, months, projectCount, focus, budget, tasks, checkIns, employees],
+  );
+
+  const runAnalysis = useCallback(async () => {
+    if (!goal.trim()) return;
+    await run("workforce", aiInput);
+  }, [run, goal, aiInput]);
 
   useEffect(() => {
     checkStatus().then((s) => s && setAiStatus(s));
@@ -143,14 +149,11 @@ export default function WorkforcePlanning() {
     setProjectCount(p.projects);
     setFocus(p.focus);
     run("workforce", {
+      ...aiInput,
       goalText: p.goal,
       horizonMonths: p.months,
       newProjectCount: p.projects,
       focus: p.focus,
-      monthlyBudgetTry: budget ? Number(budget) : null,
-      tasks,
-      checkIns,
-      employees,
     }).catch(() => {});
   };
 

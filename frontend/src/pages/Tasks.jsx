@@ -4,18 +4,17 @@ import { useManagerEmployees } from "../hooks/useManagerEmployees.js";
 import { useTasks } from "../hooks/useTasks.js";
 import { uniqueDepts } from "../utils/employeeTeams.js";
 import { formatDuration, PRIORITY_META } from "../utils/taskTime.js";
-import { calcEfficiency, teamEfficiency } from "../utils/taskMetrics.js";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  CheckCircle2, Circle, Plus, Zap, Users, BarChart3,
-  TrendingUp, TrendingDown, Search, X, Flame, AlertTriangle,
-  Star, Sparkles, ShieldAlert, Trophy, Activity, ChevronRight,
+  CheckCircle2, Circle, Plus, Users, BarChart3,
+  Search, X, Flame,
   Filter, Pencil,
   Calendar, AlignLeft, Clock,
 } from "lucide-react";
 import { Layout } from "../components/Sidebar";
-import { useAiInsight } from "../hooks/useAiInsight.js";
 import AiAnalysisNote from "../components/AiAnalysisNote.jsx";
+import { useAiInsight } from "../hooks/useAiInsight.js";
+import { slimTasksForAi } from "../utils/aiPayload.js";
 
 const AVATAR_PALETTE = ["#60a5fa", "#f472b6", "#34d399", "#a78bfa", "#fbbf24", "#818cf8"];
 
@@ -25,170 +24,31 @@ function avatarColor(avatar) {
   return AVATAR_PALETTE[code % AVATAR_PALETTE.length];
 }
 
-function perfLabel(score) {
-  if (score === null) return { label: "Beklemede", color: "#6b7280", bg: "rgba(107,114,128,0.15)", icon: Circle };
-  if (score >= 115)   return { label: "Üstün", color: "#34d399", bg: "rgba(52,211,153,0.15)", icon: Star };
-  if (score >= 100)   return { label: "Hedefte", color: "#60a5fa", bg: "rgba(96,165,250,0.15)", icon: TrendingUp };
-  if (score >= 80)    return { label: "Geride", color: "#fbbf24", bg: "rgba(251,191,36,0.15)", icon: AlertTriangle };
-  return { label: "Kritik", color: "#f87171", bg: "rgba(248,113,113,0.15)", icon: TrendingDown };
-}
-
 const STATUS_META = {
   "Done":        { color: "#34d399", icon: CheckCircle2, label: "Tamamlandı" },
   "In Progress": { color: "#818cf8", icon: Flame,        label: "Devam ediyor" },
   "To Do":       { color: "#6b7280", icon: Circle,       label: "Yapılacak" },
 };
 
-function AICoachCard({ tasks }) {
-  const { run, loading, error, insight } = useAiInsight();
-  const [open, setOpen] = useState(true);
+function TasksAiInsight({ tasks }) {
+  const { run, loading, error, insight, setInsight } = useAiInsight();
 
   const refresh = useCallback(() => {
     if (!tasks.length) return;
-    run("tasks", { tasks }).catch(() => {});
+    run("tasks", { tasks: slimTasksForAi(tasks) }).catch(() => {});
   }, [run, tasks]);
 
   useEffect(() => {
-    if (!tasks.length) return;
-    const t = setTimeout(refresh, 500);
-    return () => clearTimeout(t);
-  }, [refresh, tasks.length]);
-
-  const bullets = useMemo(() => {
-    if (!insight) return [];
-    const items = [];
-    if (insight.observation) {
-      items.push({
-        key: "obs",
-        icon: Activity,
-        color: "#a78bfa",
-        bg: "rgba(167,139,250,0.08)",
-        border: "rgba(167,139,250,0.2)",
-        label: "Gözlem",
-        text: insight.observation,
-      });
+    if (!tasks.length) {
+      setInsight(null);
+      return;
     }
-    if (insight.suggestion) {
-      items.push({
-        key: "sug",
-        icon: Trophy,
-        color: "#34d399",
-        bg: "rgba(52,211,153,0.08)",
-        border: "rgba(52,211,153,0.2)",
-        label: "Öneri",
-        text: insight.suggestion,
-      });
-    }
-    (insight.actions || []).slice(0, 2).forEach((a, i) => {
-      items.push({
-        key: `act-${i}`,
-        icon: ShieldAlert,
-        color: "#fb923c",
-        bg: "rgba(251,146,60,0.08)",
-        border: "rgba(251,146,60,0.2)",
-        label: a.title,
-        text: a.detail,
-      });
-    });
-    return items.length ? items : [{ key: "wait", icon: Sparkles, color: "#818cf8", bg: "rgba(129,140,248,0.08)", border: "rgba(129,140,248,0.2)", label: "Beklemede", text: "Henüz öngörü yok." }];
-  }, [insight]);
+    const timer = setTimeout(refresh, 500);
+    return () => clearTimeout(timer);
+  }, [refresh, tasks, setInsight]);
 
-  if (loading && !insight) {
-    return <AiAnalysisNote loading error={null} insight={null} />;
-  }
-  if (error && !insight) {
-    return <AiAnalysisNote loading={false} error={error} insight={null} />;
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="ai-coach-card"
-    >
-      <div className="ai-coach-card__glow" />
-
-      <motion.div
-        animate={{ x: ["-100%", "100%"] }}
-        transition={{ duration: 3.5, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
-        className="ai-coach-card__shimmer"
-      />
-
-      <div className="ai-coach-card__footer-line" />
-
-      <div className="ai-coach-card__header" onClick={() => setOpen(o => !o)}>
-        <div className="relative flex-shrink-0">
-          <motion.div
-            animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
-            className="ai-coach-card__pulse"
-          />
-          <div className="ai-coach-card__icon-box relative">
-            <Sparkles size={17} />
-          </div>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-sm font-bold text-white tracking-tight">Yapay Zeka Koçu</span>
-          </div>
-          <p className="text-xs page-header__subtitle">
-            {bullets.length} öngörü
-          </p>
-        </div>
-
-        <motion.div
-          animate={{ rotate: open ? 90 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="ai-coach-card__chevron"
-        >
-          <ChevronRight size={16} />
-        </motion.div>
-      </div>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="collapse-panel"
-          >
-            <div className="ai-coach-card__body space-y-2.5">
-              <div className="ai-coach-card__divider" />
-              {bullets.map((b, i) => {
-                const BIcon = b.icon;
-                return (
-                  <motion.div
-                    key={b.key}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.07, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="insight-bullet"
-                    style={{
-                      "--bullet-bg": b.bg,
-                      "--bullet-border": b.border,
-                      "--bullet-color": b.color,
-                    }}
-                  >
-                    <div className="insight-bullet__icon">
-                      <BIcon size={13} />
-                    </div>
-                    <div>
-                      <p className="insight-bullet__label">{b.label}</p>
-                      <p className="insight-bullet__text">{b.text}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
+  if (!tasks.length) return null;
+  return <AiAnalysisNote insight={insight} loading={loading} error={error} />;
 }
 
 function StatPill({ label, value, sub, icon: Icon, color }) {
@@ -202,20 +62,6 @@ function StatPill({ label, value, sub, icon: Icon, color }) {
       </div>
       <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
       <span className="glass-stat__sub">{sub}</span>
-    </div>
-  );
-}
-
-function TeamEfficiencyBadge({ score }) {
-  if (score === null) return null;
-  const perf = perfLabel(score);
-  return (
-    <div
-      className="perf-badge"
-      style={{ "--status-color": perf.color, "--badge-bg": perf.bg }}
-    >
-      <Zap size={11} />
-      Ekip ort.: %{score}
     </div>
   );
 }
@@ -282,10 +128,9 @@ function CompleteHoursModal({ onClose, onSubmit, submitting }) {
 function TaskCard({ task, index, canChangeStatus, canEditMeta, onUpdate, onEdit, hideEmployee }) {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const status = STATUS_META[task.status];
+  const status = STATUS_META[task.status] || STATUS_META["To Do"];
   const StatusIcon = status.icon;
   const color = avatarColor(task.avatar);
-  const unit = task.timeUnit || "hours";
   const priority = PRIORITY_META[task.priority] || PRIORITY_META.medium;
 
   const setStatus = async (s) => {
@@ -357,13 +202,13 @@ function TaskCard({ task, index, canChangeStatus, canEditMeta, onUpdate, onEdit,
           {task.estimated > 0 ? (
             <span className="task-meta-chip">
               <Clock size={10} />
-              Tahmini: {formatDuration(task.estimated, unit)}
+              Tahmini: {formatDuration(task.estimated)}
             </span>
           ) : null}
           {task.status === "Done" && task.spent > 0 ? (
             <span className="task-meta-chip task-meta-chip--done">
               <CheckCircle2 size={10} />
-              {formatDuration(task.spent, unit)} sürdü
+              {formatDuration(task.spent)} sürdü
             </span>
           ) : null}
         </div>
@@ -443,7 +288,6 @@ function TaskFormModal({ mode, team, employees, isEmployee, task, onClose, onSub
       description: form.description.trim(),
       priority: form.priority,
       dueDate: form.dueDate,
-      timeUnit: "hours",
       estimated: parseFloat(form.estimated) || 0,
     };
 
@@ -620,30 +464,28 @@ export default function TasksPage() {
   }, [deptList, modalTeam]);
 
   const globalStats = useMemo(() => {
-    const active = tasks.filter(t => t.status === "In Progress").length;
-    const done   = tasks.filter(t => t.status === "Done").length;
-    const todo   = tasks.filter(t => t.status === "To Do").length;
-    const all    = tasks.filter(t => calcEfficiency(t) !== null);
-    const avg    = all.length ? Math.round(all.reduce((s, t) => s + calcEfficiency(t), 0) / all.length) : 0;
-    return { active, done, todo, total: tasks.length, avg };
+    const active = tasks.filter((t) => t.status === "In Progress").length;
+    const done = tasks.filter((t) => t.status === "Done").length;
+    const todo = tasks.filter((t) => t.status === "To Do").length;
+    return { active, done, todo, total: tasks.length };
   }, [tasks]);
 
   const filteredTeams = useMemo(() => {
     const match = (t) =>
       !search ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.employee.toLowerCase().includes(search.toLowerCase());
+      (t.employee || "").toLowerCase().includes(search.toLowerCase());
 
     if (isEmployee) {
       const mine = tasks.filter(match);
-      return mine.length ? [{ team: "Görevlerim", tasks: mine, efficiency: teamEfficiency(mine) }] : [];
+      return mine.length ? [{ team: "Görevlerim", tasks: mine }] : [];
     }
 
     const teams = activeTeam === "Tümü" ? deptList : [activeTeam];
     return teams
       .map((team) => {
         const teamTasks = tasks.filter((t) => t.team === team).filter(match);
-        return { team, tasks: teamTasks, efficiency: teamEfficiency(teamTasks) };
+        return { team, tasks: teamTasks };
       })
       .filter((g) => g.tasks.length > 0);
   }, [tasks, activeTeam, search, deptList, isEmployee]);
@@ -701,10 +543,10 @@ export default function TasksPage() {
           <p className="text-sm text-gray-500">Görevler yükleniyor…</p>
         ) : null}
 
-        {!isEmployee && tasks.length > 0 ? <AICoachCard tasks={tasks} /> : null}
+        {!isEmployee && !loading && tasks.length > 0 ? <TasksAiInsight tasks={tasks} /> : null}
 
         <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-2 lg:grid-cols-3 gap-4"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -712,7 +554,6 @@ export default function TasksPage() {
           <StatPill label="Toplam görev" value={globalStats.total} sub={`${globalStats.todo} bekleyen`} icon={BarChart3} color="#818cf8" />
           <StatPill label="Devam eden" value={globalStats.active} sub={isEmployee ? "aktif işleriniz" : "tüm ekip"} icon={Flame} color="#f472b6" />
           <StatPill label="Tamamlanan" value={globalStats.done} sub="bu dönem" icon={CheckCircle2} color="#34d399" />
-          <StatPill label="Ort. verim" value={`${globalStats.avg}%`} sub={globalStats.avg >= 100 ? "Hedefte" : "Hedef altı"} icon={Zap} color="#fbbf24" />
         </motion.div>
 
         <motion.div
@@ -760,7 +601,7 @@ export default function TasksPage() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            {filteredTeams.map(({ team, tasks: tTasks, efficiency }) => (
+            {filteredTeams.map(({ team, tasks: tTasks }) => (
               <motion.div
                 key={team}
                 initial={{ opacity: 0, y: 16 }}
@@ -773,7 +614,6 @@ export default function TasksPage() {
                     <Users size={14} className="text-[var(--text-dim)]" />
                     <span className="text-sm font-bold text-white tracking-tight">{team}</span>
                     <span className="team-section__count">{tTasks.length} görev</span>
-                    <TeamEfficiencyBadge score={efficiency} />
                   </div>
                 </div>
 

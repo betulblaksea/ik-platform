@@ -13,7 +13,8 @@ import {
 } from "../utils/checkInCharts.js";
 import { WORK_MODES, COMMUTE_METHODS } from "../utils/workTimeMeta.js";
 
-const LATE_REASONS = [
+const ARRIVAL_CATEGORIES = [
+  { id: "ontime", label: "Zamanında", icon: CheckCircle2 },
   { id: "traffic", label: "Trafik", icon: Car },
   { id: "health", label: "Sağlık", icon: HeartPulse },
   { id: "family", label: "Aile", icon: Home },
@@ -63,23 +64,19 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
 
   const [arrival, setArrival] = useState("09:00");
   const [workMode, setWorkMode] = useState("office");
-  const [category, setCategory] = useState("traffic");
+  const [category, setCategory] = useState("ontime");
   const [commute, setCommute] = useState("metrobus");
-  const [morningNote, setMorningNote] = useState("");
 
   const [departure, setDeparture] = useState("18:00");
-  const [daySummary, setDaySummary] = useState("");
   const [energy, setEnergy] = useState(3);
 
   useEffect(() => {
     if (!todayRecord) return;
     setArrival(todayRecord.arrival || "09:00");
-    setWorkMode(todayRecord.workMode === "hybrid" ? "office" : todayRecord.workMode || "office");
-    setCategory(todayRecord.category === "ontime" ? "traffic" : todayRecord.category);
+    setWorkMode(todayRecord.workMode || "office");
+    setCategory(todayRecord.category || "ontime");
     setCommute(todayRecord.commuteMethod || "metrobus");
-    setMorningNote(todayRecord.note || "");
     if (todayRecord.departure) setDeparture(todayRecord.departure);
-    setDaySummary(todayRecord.daySummary || "");
     if (todayRecord.energyLevel) setEnergy(todayRecord.energyLevel);
     if (todayRecord.arrival && !todayRecord.departure) setTab("evening");
   }, [todayRecord]);
@@ -88,23 +85,30 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
   const hasMorning = Boolean(todayRecord?.arrival);
   const hasEvening = Boolean(todayRecord?.departure);
 
+  useEffect(() => {
+    if (delay === 0) setCategory("ontime");
+    else setCategory((c) => (c === "ontime" ? "traffic" : c));
+  }, [delay]);
+
   const saveMorning = async (e) => {
     e.preventDefault();
-    await onSave({
-      arrivalTime: arrival,
-      workMode,
-      category: delay > 0 ? category : "ontime",
-      commuteMethod: commute,
-      note: morningNote,
-    });
-    setTab("evening");
+    const resolvedCategory = delay === 0 ? "ontime" : category;
+    try {
+      await onSave({
+        arrivalTime: arrival,
+        workMode,
+        category: resolvedCategory,
+        commuteMethod: commute,
+      });
+      setTab("evening");
+    } catch {
+    }
   };
 
   const saveEvening = async (e) => {
     e.preventDefault();
     await onSave({
       departureTime: departure,
-      daySummary,
       energyLevel: energy,
     });
   };
@@ -146,12 +150,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
           <div className="work-log-panel__icon">
             <Sparkles size={18} />
           </div>
-          <div>
-            <h2 className="text-sm font-bold text-white">Günlük çalışma kaydı</h2>
-            <p className="chart-card__subtitle">
-              Saatleri elle girin — otomatik kayıt yok
-            </p>
-          </div>
+          <h2 className="text-sm font-bold text-white">Günlük çalışma kaydı</h2>
         </div>
 
         <AnimatePresence mode="wait">
@@ -216,44 +215,38 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
               </div>
 
               {delay > 0 ? (
-                <>
-                  <div className="alert-warning-box text-sm">
-                    <Clock size={16} className="text-amber-400" />
-                    <span className="text-amber-100">{delay} dk geç (09:00’a göre)</span>
-                  </div>
-
-                  <div>
-                    <p className="field-label mb-2">Gecikme nedeni</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {LATE_REASONS.map((c) => {
-                        const Icon = c.icon;
-                        const active = category === c.id;
-                        const meta = LATE_CATEGORIES[c.id];
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => setCategory(c.id)}
-                            className={`choice-grid-btn flex-row justify-center gap-2 py-2.5${active ? " choice-grid-btn--cat-active" : ""}`}
-                            style={active ? { "--status-color": meta.color, "--cat-bg": meta.bg } : undefined}
-                          >
-                            <Icon size={14} />
-                            {c.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
+                <div className="alert-warning-box text-sm">
+                  <Clock size={16} className="text-amber-400" />
+                  <span className="text-amber-100">{delay} dk geç (09:00’a göre)</span>
+                </div>
               ) : null}
 
-              <textarea
-                value={morningNote}
-                onChange={(e) => setMorningNote(e.target.value)}
-                rows={2}
-                placeholder="Sabah notu (ör. köprü trafiği, toplantı gecikmesi)"
-                className="field-input resize-none"
-              />
+              <div>
+                <p className="field-label mb-2">Giriş durumu</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {ARRIVAL_CATEGORIES.map((c) => {
+                    const Icon = c.icon;
+                    const active = category === c.id;
+                    const meta = LATE_CATEGORIES[c.id];
+                    const disabled =
+                      (delay === 0 && c.id !== "ontime") ||
+                      (delay > 0 && c.id === "ontime");
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => setCategory(c.id)}
+                        className={`choice-grid-btn flex-row justify-center gap-2 py-2.5${active ? " choice-grid-btn--cat-active" : ""}${disabled ? " opacity-40 cursor-not-allowed" : ""}`}
+                        style={active ? { "--status-color": meta.color, "--cat-bg": meta.bg } : undefined}
+                      >
+                        <Icon size={14} />
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <button type="submit" disabled={saving} className="btn-submit-blue">
                 {saving ? "Kaydediliyor…" : hasMorning ? "Sabah kaydını güncelle" : "Sabah girişini kaydet"}
@@ -280,18 +273,6 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
                 onChange={setDeparture}
                 onNow={() => setDeparture(currentArrivalTime())}
               />
-
-              <div>
-                <p className="field-label mb-2">Gün özeti</p>
-                <textarea
-                  value={daySummary}
-                  onChange={(e) => setDaySummary(e.target.value)}
-                  rows={3}
-                  disabled={!hasMorning}
-                  placeholder="Bugün ne yaptınız? Odak, engeller, yarın planı…"
-                  className="field-input resize-none disabled:opacity-40"
-                />
-              </div>
 
               <div>
                 <p className="field-label mb-2 flex items-center gap-1">

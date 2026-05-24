@@ -56,8 +56,7 @@ export default function AddEmployeeModal({ onClose, onAdd }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(6,6,15,0.85)", backdropFilter: "blur(12px)" }}
+      className="modal-backdrop"
       onClick={onClose}
     >
       <motion.div
@@ -66,63 +65,43 @@ export default function AddEmployeeModal({ onClose, onAdd }) {
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         onClick={(e) => e.stopPropagation()}
-        className="rounded-3xl p-8 w-full max-w-md relative overflow-hidden"
-        style={{
-          background: "rgba(15, 15, 35, 0.8)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-        }}
+        className="modal-panel"
       >
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">Yeni Çalışan Kaydı</h2>
             <p className="text-xs text-gray-500 mt-1">Sisteme yeni bir personel profili ekleyin.</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/5 text-gray-500 hover:text-white transition-colors"
-          >
+          <button type="button" onClick={onClose} className="modal-close-btn">
             <X size={20} />
           </button>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center font-medium">
-            {error}
-          </div>
-        )}
+        {error ? <div className="alert-error mb-6">{error}</div> : null}
 
         <form onSubmit={handleAdd} className="space-y-5">
           {[
             { label: "Ad Soyad", key: "name", type: "text", placeholder: "Örn: Ahmet Yılmaz" },
-            { label: "E-Posta", key: "email", type: "email", placeholder: "ahmet@orbis.hq" },
-            { label: "Pozisyon", key: "role", type: "text", placeholder: "Örn: Frontend Developer" },
-            { label: "Departman", key: "dept", type: "text", placeholder: "Örn: Engineering" },
+            { label: "E-Posta", key: "email", type: "email", placeholder: "ahmet@sirket.com" },
+            { label: "Pozisyon", key: "role", type: "text", placeholder: "Örn: Yazılım geliştirici" },
+            { label: "Departman", key: "dept", type: "text", placeholder: "Örn: Mühendislik" },
             { label: "Geçici Şifre", key: "password", type: "password", placeholder: "••••••••" },
           ].map((f) => (
-            <div key={f.key} className="space-y-1.5">
-              <label className="block font-semibold tracking-widest uppercase text-[10px] text-gray-500 ml-1">
-                {f.label}
-              </label>
+            <div key={f.key}>
+              <label className="field-label">{f.label}</label>
               <input
                 required
                 type={f.type}
                 placeholder={f.placeholder}
                 value={form[f.key]}
                 onChange={(e) => up(f.key, e.target.value)}
-                className="w-full rounded-2xl px-4 py-3 text-sm text-white outline-none border border-white/10 bg-white/5 focus:bg-white/10 focus:border-blue-500/40 transition-all placeholder:text-gray-600"
+                className="field-input"
               />
             </div>
           ))}
 
           <div className="pt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 rounded-2xl text-sm font-bold text-white shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
-              style={{ background: "linear-gradient(135deg, #3b82f6, #8b5cf6)" }}
-            >
+            <button type="submit" disabled={loading} className="btn-submit-form">
               {loading ? "Kaydediliyor..." : "Çalışanı Sisteme Ekle"}
             </button>
           </div>

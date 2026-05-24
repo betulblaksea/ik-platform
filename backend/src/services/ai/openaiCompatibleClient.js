@@ -49,9 +49,6 @@ function extractAssistantText(choice) {
   return "";
 }
 
-/**
- * OpenAI Chat Completions uyumlu API (OpenRouter vb.)
- */
 export async function openaiCompatibleChatJson({
   baseUrl,
   apiKey,

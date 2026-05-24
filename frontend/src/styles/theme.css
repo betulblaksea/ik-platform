@@ -1,0 +1,41 @@
+:root {
+  --bg-app: #06060f;
+  --bg-panel: #0d0d1f;
+  --bg-deep: #060612;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+
+  --text-primary: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.38);
+  --text-dim: rgba(255, 255, 255, 0.3);
+  --text-faint: rgba(255, 255, 255, 0.28);
+  --text-label: rgba(255, 255, 255, 0.4);
+  --text-nav: rgba(255, 255, 255, 0.38);
+  --text-nav-active: #93c5fd;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-soft: rgba(255, 255, 255, 0.07);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(80, 80, 100, 0.4);
+
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --glass-bg-strong: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --glass-fill: rgba(255, 255, 255, 0.04);
+  --glass-fill-soft: rgba(255, 255, 255, 0.03);
+
+  --accent-blue: #3b82f6;
+  --accent-violet: #8b5cf6;
+  --gradient-brand: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --shadow-brand: 0 0 20px rgba(99, 102, 241, 0.4);
+
+  --error-bg: rgba(127, 29, 29, 0.35);
+  --error-border: rgba(248, 113, 113, 0.35);
+  --success-bg: rgba(6, 78, 59, 0.35);
+  --success-border: rgba(52, 211, 153, 0.45);
+
+  --role-employee-accent: #0ea5e9;
+  --role-employee-glow: rgba(14, 165, 233, 0.35);
+  --role-manager-accent: #a855f7;
+  --role-manager-glow: rgba(168, 85, 247, 0.35);
+  --role-employee-gradient: linear-gradient(135deg, #0ea5e9, #0284c7);
+  --role-manager-gradient: linear-gradient(135deg, #a855f7, #9333ea);
+}

@@ -43,9 +43,7 @@ export async function listCheckIns(req, res) {
 export async function upsertTodayCheckIn(req, res) {
   try {
     const scope = await getTeamScope(req);
-    if (!scope || scope.role !== "employee") {
-      return res.status(403).json({ message: "Yalnızca çalışanlar günlük kayıt girebilir" });
-    }
+    if (!scope) return res.status(401).json({ message: "Yetkisiz" });
 
     const {
       arrivalTime,

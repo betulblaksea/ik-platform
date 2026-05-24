@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { isManagerRole } from "../utils/roleLabels.js";
 
 export function employeeInitials(name, email) {
   const n = (name || "").trim();
@@ -18,7 +17,7 @@ export function formatEmployee(u) {
     ...u,
     id: u.id || u._id,
     avatar: employeeInitials(u.name, u.email),
-    role: u.position || u.role || "Çalışan",
+    role: u.position || "",
     dept: u.dept || "Genel",
   };
 }
@@ -30,7 +29,7 @@ export function useManagerEmployees() {
   const [error, setError] = useState("");
 
   const reload = useCallback(async () => {
-    if (!token || !isManagerRole(user?.role)) {
+    if (!token || user?.role !== "manager") {
       setEmployees([]);
       setLoading(false);
       return;

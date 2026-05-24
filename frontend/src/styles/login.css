@@ -1,0 +1,335 @@
+.login-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+.login-aurora__base {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 120% 120% at 50% 50%, #0a0a1a 0%, #050510 100%);
+}
+
+.login-aurora__blob {
+  position: absolute;
+  border-radius: 9999px;
+}
+
+.login-aurora__blob--1 {
+  width: 1200px;
+  height: 1200px;
+  left: -20%;
+  top: -30%;
+  filter: blur(80px);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(79, 70, 229, 0.2) 40%, transparent 70%);
+}
+
+.login-aurora__blob--2 {
+  width: 1000px;
+  height: 1000px;
+  right: -15%;
+  bottom: -20%;
+  filter: blur(100px);
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.35) 0%, rgba(6, 182, 212, 0.15) 50%, transparent 70%);
+}
+
+.login-aurora__blob--3 {
+  width: 800px;
+  height: 800px;
+  left: 30%;
+  top: 10%;
+  filter: blur(90px);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 70%);
+}
+
+.login-aurora__blob--4 {
+  width: 600px;
+  height: 600px;
+  right: 25%;
+  top: 40%;
+  filter: blur(70px);
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.25) 0%, rgba(13, 148, 136, 0.1) 50%, transparent 70%);
+}
+
+.login-aurora__flow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+}
+
+.login-geo-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+  opacity: 0.5;
+}
+
+.login-geo-pos--1 {
+  left: 10%;
+  top: 20%;
+}
+
+.login-geo-pos--2 {
+  right: 15%;
+  top: 30%;
+}
+
+.login-geo-pos--3 {
+  left: 60%;
+  bottom: 25%;
+}
+
+.login-geo-pos--4 {
+  left: 25%;
+  bottom: 20%;
+}
+
+.login-geo-ring {
+  width: 16rem;
+  height: 16rem;
+  border-radius: 9999px;
+  border-width: 20px;
+  opacity: 0.06;
+  border-color: #22d3ee;
+  box-shadow: 0 0 60px rgba(34, 211, 238, 0.25), inset 0 0 40px rgba(34, 211, 238, 0.15);
+}
+
+.login-geo-sphere {
+  width: 8rem;
+  height: 8rem;
+  border-radius: 9999px;
+  opacity: 0.1;
+  background: radial-gradient(circle at 30% 30%, #a855f7, #7c3aed);
+  box-shadow: 0 0 80px rgba(168, 85, 247, 0.35), inset 0 0 40px rgba(196, 181, 253, 0.25);
+}
+
+.login-geo-torus {
+  width: 12rem;
+  height: 12rem;
+  border-radius: 9999px;
+  border-width: 12px;
+  opacity: 0.05;
+  border-color: #14b8a6;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  box-shadow: 0 0 50px rgba(20, 184, 166, 0.25);
+}
+
+.login-geo-diamond {
+  width: 5rem;
+  height: 5rem;
+  opacity: 0.08;
+  background: linear-gradient(135deg, #38bdf8 0%, #8b5cf6 100%);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.login-hero {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .login-hero {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 4rem 0 6rem;
+    position: relative;
+    z-index: 10;
+  }
+}
+
+.login-hero__glow {
+  position: absolute;
+  inset: 0;
+  filter: blur(2rem);
+  opacity: 0.4;
+  background: linear-gradient(90deg, #22d3ee, #6366f1);
+}
+
+.login-hero__title-gradient {
+  background-image: linear-gradient(90deg, #67e8f9, #e0f2fe, #a5b4fc);
+}
+
+.login-hero__badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  background: linear-gradient(135deg, rgba(15, 15, 30, 0.9), rgba(10, 10, 25, 0.8));
+  backdrop-filter: blur(10px);
+}
+
+.login-hero__badge-shine {
+  height: 100%;
+  width: 33.333%;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.25), transparent);
+}
+
+.login-hero__badge-text {
+  background-image: linear-gradient(90deg, #67e8f9, #e0f2fe, #a5f3fc);
+}
+
+.login-card-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 3rem;
+  position: relative;
+  z-index: 10;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 28rem;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: rgba(10, 10, 25, 0.6);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 30px 80px -20px rgba(0, 0, 0, 0.65),
+    0 0 120px -30px var(--login-glow, rgba(168, 85, 247, 0.35));
+}
+
+.login-card__inner-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.06), transparent 60%);
+}
+
+.login-role-card {
+  position: relative;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  text-align: left;
+  overflow: hidden;
+  background: rgba(15, 15, 35, 0.5);
+}
+
+.login-role-card--selected {
+  background: linear-gradient(135deg, rgba(var(--role-rgb), 0.15), rgba(var(--role-rgb), 0.08));
+}
+
+.login-role-card--employee {
+  --role-rgb: 14, 165, 233;
+}
+
+.login-role-card--manager {
+  --role-rgb: 168, 85, 247;
+}
+
+.login-role-card__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, var(--role-glow), transparent 70%);
+}
+
+.login-role-card__check {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(100, 100, 120, 0.4);
+}
+
+.login-role-card__check--on {
+  border-color: var(--role-accent);
+  background: var(--role-accent);
+  box-shadow: 0 0 15px var(--role-glow);
+}
+
+.login-input {
+  width: 100%;
+  height: 52px;
+  padding-left: 2.75rem;
+  padding-right: 1rem;
+  border-radius: 0.75rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.3s;
+  background: rgba(15, 15, 35, 0.7);
+  border: 1px solid var(--border-input);
+}
+
+.login-input:focus {
+  border-color: rgba(14, 165, 233, 0.5);
+}
+
+.login-success {
+  border-radius: 0.75rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+}
+
+.login-btn-panel {
+  flex: 1;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--login-gradient, var(--role-manager-gradient));
+}
+
+.login-btn-secondary {
+  flex: 1;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  color: #a7f3d0;
+  background: rgba(15, 15, 35, 0.6);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.login-submit {
+  position: relative;
+  width: 100%;
+  height: 3.25rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  border: none;
+  cursor: pointer;
+  background: var(--login-gradient, var(--role-manager-gradient));
+}
+
+.login-submit__shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.login-submit__shimmer--1 {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+}
+
+.login-submit__shimmer--2 {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+}

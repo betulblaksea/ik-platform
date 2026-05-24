@@ -1,4 +1,3 @@
-/** Model bazen ```json ... ``` döndürür veya dizi döndürür */
 export function parseModelJson(text) {
   const trimmed = String(text || "").trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);

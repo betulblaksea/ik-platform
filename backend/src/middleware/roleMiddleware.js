@@ -1,15 +1,32 @@
 import { User } from "../models/User.js";
 
-/** Yalnızca yönetici (role: manager) hesaplarının geçebileceği middleware */
-export const isManager = async (req, res, next) => {
+export async function attachUser(req, res, next) {
   try {
-    const user = await User.findById(req.userId);
-    if (user?.role !== "manager") {
-      return res.status(403).json({ message: "Bu işlem için yönetici yetkisi gereklidir." });
+    if (!req.userId) {
+      return res.status(401).json({ message: "Oturum gerekli" });
     }
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    }
+    req.user = user;
     next();
   } catch (error) {
-    console.error("isManager Middleware Error:", error);
-    res.status(500).json({ message: "Yetki kontrolü sırasında sunucu hatası oluştu." });
+    console.error("attachUser:", error);
+    return res.status(500).json({ message: "Kullanıcı bilgisi alınamadı" });
   }
-};
+}
+
+export function isManager(req, res, next) {
+  if (req.user?.role !== "manager") {
+    return res.status(403).json({ message: "Bu işlem için yönetici yetkisi gereklidir." });
+  }
+  next();
+}
+
+export function isEmployee(req, res, next) {
+  if (req.user?.role !== "employee") {
+    return res.status(403).json({ message: "Bu işlem yalnızca çalışanlar içindir" });
+  }
+  next();
+}

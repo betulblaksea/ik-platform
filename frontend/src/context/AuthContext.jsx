@@ -80,7 +80,6 @@ export function AuthProvider({ children }) {
           setState((prev) => ({ ...prev, user: u }));
         }
       } catch {
-        /* mevcut context kullanıcısı kalsın */
       }
     })();
     return () => {

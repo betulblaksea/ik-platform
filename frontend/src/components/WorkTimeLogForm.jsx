@@ -23,26 +23,20 @@ const LATE_REASONS = [
 function TimeField({ label, value, onChange, onNow, hint }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{label}</label>
+      <label className="field-label">{label}</label>
       <div className="flex gap-2">
         <input
           type="time"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 rounded-xl px-4 py-3 text-sm text-white outline-none tabular-nums"
-          style={{ background: "rgba(15,15,35,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          className="field-input flex-1 tabular-nums"
           required
         />
-        <button
-          type="button"
-          onClick={onNow}
-          className="px-3 py-2 rounded-xl text-xs font-semibold text-blue-300 shrink-0"
-          style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.35)" }}
-        >
+        <button type="button" onClick={onNow} className="quick-add-btn shrink-0">
           Şimdi
         </button>
       </div>
-      {hint ? <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>{hint}</p> : null}
+      {hint ? <p className="field-hint">{hint}</p> : null}
     </div>
   );
 }
@@ -55,12 +49,7 @@ function EnergyPicker({ value, onChange }) {
           key={n}
           type="button"
           onClick={() => onChange(n)}
-          className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
-          style={{
-            background: value === n ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${value === n ? "rgba(251,191,36,0.5)" : "rgba(255,255,255,0.08)"}`,
-            color: value === n ? "#fcd34d" : "rgba(255,255,255,0.35)",
-          }}
+          className={`energy-btn${value === n ? " energy-btn--active" : ""}`}
         >
           {n}
         </button>
@@ -123,13 +112,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
   return (
     <div className="space-y-4">
       {hasMorning && (
-        <div
-          className="rounded-xl px-4 py-3 flex items-center gap-3 text-sm"
-          style={{
-            background: "rgba(52,211,153,0.1)",
-            border: "1px solid rgba(52,211,153,0.28)",
-          }}
-        >
+        <div className="work-log-success">
           <CheckCircle2 size={18} className="text-emerald-400" />
           <div className="flex-1">
             <span className="text-emerald-100 font-semibold">Sabah kaydı: {todayRecord.arrival}</span>
@@ -141,11 +124,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
         </div>
       )}
 
-      {/* Tabs */}
-      <div
-        className="flex gap-1 p-1 rounded-xl"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-      >
+      <div className="tab-switcher">
         {[
           { id: "morning", label: "Sabah girişi", icon: Sun },
           { id: "evening", label: "Akşam çıkışı", icon: Moon },
@@ -154,12 +133,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              background: tab === id ? "rgba(59,130,246,0.25)" : "transparent",
-              color: tab === id ? "#93c5fd" : "rgba(255,255,255,0.4)",
-              border: tab === id ? "1px solid rgba(59,130,246,0.4)" : "1px solid transparent",
-            }}
+            className={`tab-btn${tab === id ? " tab-btn--active" : ""}`}
           >
             <Icon size={14} />
             {label}
@@ -167,23 +141,14 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
         ))}
       </div>
 
-      <motion.div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.05) 100%)",
-          border: "1px solid rgba(59,130,246,0.22)",
-        }}
-      >
+      <motion.div className="work-log-panel">
         <div className="px-6 pt-5 pb-2 flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.35)" }}
-          >
-            <Sparkles size={18} className="text-blue-400" />
+          <div className="work-log-panel__icon">
+            <Sparkles size={18} />
           </div>
           <div>
             <h2 className="text-sm font-bold text-white">Günlük çalışma kaydı</h2>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>
+            <p className="chart-card__subtitle">
               Saatleri elle girin — otomatik kayıt yok
             </p>
           </div>
@@ -207,9 +172,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
                 hint={`Mesai başlangıcı referans: ${STANDARD_START}`}
               />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                  Bugün nerede çalışıyorsunuz?
-                </p>
+                <p className="field-label mb-2">Bugün nerede çalışıyorsunuz?</p>
                 <div className="grid grid-cols-2 gap-2">
                   {WORK_MODES.map((m) => {
                     const Icon = m.icon;
@@ -219,12 +182,8 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
                         key={m.id}
                         type="button"
                         onClick={() => setWorkMode(m.id)}
-                        className="flex flex-col items-center gap-1 py-3 rounded-xl text-xs font-semibold"
-                        style={{
-                          background: active ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.03)",
-                          border: `1px solid ${active ? "rgba(59,130,246,0.45)" : "rgba(255,255,255,0.08)"}`,
-                          color: active ? "#93c5fd" : "rgba(255,255,255,0.4)",
-                        }}
+                        className={`choice-grid-btn${active ? " choice-grid-btn--active" : ""}`}
+                        style={active ? { "--status-color": "#93c5fd" } : undefined}
                       >
                         <Icon size={16} />
                         {m.label}
@@ -235,9 +194,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
               </div>
 
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                  Ulaşım şekli
-                </p>
+                <p className="field-label mb-2">Ulaşım şekli</p>
                 <div className="flex flex-wrap gap-2">
                   {COMMUTE_METHODS.map((c) => {
                     const Icon = c.icon;
@@ -247,12 +204,8 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
                         key={c.id}
                         type="button"
                         onClick={() => setCommute(c.id)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-                        style={{
-                          background: active ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.03)",
-                          border: `1px solid ${active ? "rgba(59,130,246,0.45)" : "rgba(255,255,255,0.08)"}`,
-                          color: active ? "#93c5fd" : "rgba(255,255,255,0.4)",
-                        }}
+                        className={`choice-chip-btn${active ? " choice-chip-btn--active" : ""}`}
+                        style={active ? { "--status-color": "#93c5fd" } : undefined}
                       >
                         <Icon size={13} />
                         {c.label}
@@ -264,18 +217,13 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
 
               {delay > 0 ? (
                 <>
-                  <div
-                    className="rounded-xl px-4 py-3 flex items-center gap-2 text-sm"
-                    style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}
-                  >
+                  <div className="alert-warning-box text-sm">
                     <Clock size={16} className="text-amber-400" />
                     <span className="text-amber-100">{delay} dk geç (09:00’a göre)</span>
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                      Gecikme nedeni
-                    </p>
+                    <p className="field-label mb-2">Gecikme nedeni</p>
                     <div className="grid grid-cols-2 gap-2">
                       {LATE_REASONS.map((c) => {
                         const Icon = c.icon;
@@ -286,12 +234,8 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
                             key={c.id}
                             type="button"
                             onClick={() => setCategory(c.id)}
-                            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold"
-                            style={{
-                              background: active ? meta.bg : "rgba(255,255,255,0.03)",
-                              border: `1px solid ${active ? meta.color + "55" : "rgba(255,255,255,0.08)"}`,
-                              color: active ? meta.color : "rgba(255,255,255,0.4)",
-                            }}
+                            className={`choice-grid-btn flex-row justify-center gap-2 py-2.5${active ? " choice-grid-btn--cat-active" : ""}`}
+                            style={active ? { "--status-color": meta.color, "--cat-bg": meta.bg } : undefined}
                           >
                             <Icon size={14} />
                             {c.label}
@@ -308,19 +252,10 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
                 onChange={(e) => setMorningNote(e.target.value)}
                 rows={2}
                 placeholder="Sabah notu (ör. köprü trafiği, toplantı gecikmesi)"
-                className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none resize-none"
-                style={{ background: "rgba(15,15,35,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
+                className="field-input resize-none"
               />
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-                  boxShadow: "0 6px 24px rgba(59,130,246,0.3)",
-                }}
-              >
+              <button type="submit" disabled={saving} className="btn-submit-blue">
                 {saving ? "Kaydediliyor…" : hasMorning ? "Sabah kaydını güncelle" : "Sabah girişini kaydet"}
               </button>
             </motion.form>
@@ -334,8 +269,7 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
               className="px-6 pb-6 space-y-4"
             >
               {!hasMorning ? (
-                <p className="text-xs text-amber-200/90 rounded-lg px-3 py-2"
-                  style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                <p className="alert-warning-box text-xs text-amber-200/90 py-2 px-3">
                   Önce sabah giriş saatini kaydedin.
                 </p>
               ) : null}
@@ -348,36 +282,25 @@ export default function WorkTimeLogForm({ todayRecord, onSave, saving }) {
               />
 
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                  Gün özeti
-                </p>
+                <p className="field-label mb-2">Gün özeti</p>
                 <textarea
                   value={daySummary}
                   onChange={(e) => setDaySummary(e.target.value)}
                   rows={3}
                   disabled={!hasMorning}
                   placeholder="Bugün ne yaptınız? Odak, engeller, yarın planı…"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none resize-none disabled:opacity-40"
-                  style={{ background: "rgba(15,15,35,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="field-input resize-none disabled:opacity-40"
                 />
               </div>
 
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1">
+                <p className="field-label mb-2 flex items-center gap-1">
                   <Zap size={11} /> Enerji seviyesi (1–5)
                 </p>
                 <EnergyPicker value={energy} onChange={setEnergy} />
               </div>
 
-              <button
-                type="submit"
-                disabled={saving || !hasMorning}
-                className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
-                  boxShadow: "0 6px 24px rgba(139,92,246,0.3)",
-                }}
-              >
+              <button type="submit" disabled={saving || !hasMorning} className="btn-submit-violet">
                 {saving ? "Kaydediliyor…" : hasEvening ? "Akşam kaydını güncelle" : "Akşam çıkışını kaydet"}
               </button>
             </motion.form>

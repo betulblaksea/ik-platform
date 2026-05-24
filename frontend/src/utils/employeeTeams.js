@@ -12,7 +12,6 @@ const DEPT_META = [
   { icon: Activity, color: "#ef4444", glow: "rgba(239,68,68,0.35)" },
 ];
 
-/** Çalışanları departmana göre dashboard takımlarına dönüştürür */
 export function employeesToTeams(employees) {
   const byDept = {};
   employees.forEach((emp) => {
@@ -20,21 +19,17 @@ export function employeesToTeams(employees) {
     if (!byDept[dept]) byDept[dept] = [];
     byDept[dept].push({
       name: emp.name,
-      role: emp.role || emp.position || "Çalışan",
+      role: emp.role || emp.position || "",
       avatar: emp.avatar || employeeInitials(emp.name, emp.email),
     });
   });
 
   return Object.entries(byDept).map(([department, members], index) => {
     const meta = DEPT_META[index % DEPT_META.length];
-    const count = members.length;
     return {
       id: department,
       name: department,
       department,
-      efficiency: count > 0 ? 100 : 0,
-      aiScore: count > 0 ? 100 : 0,
-      aiInsight: count === 0 ? "Bu departmanda henüz çalışan yok." : `${count} çalışan`,
       icon: meta.icon,
       color: meta.color,
       glow: meta.glow,

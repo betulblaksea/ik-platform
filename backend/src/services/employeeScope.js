@@ -13,7 +13,6 @@ export function employeeResponse(user) {
   };
 }
 
-/** Giriş yapan yöneticinin eklediği çalışanlar */
 export async function getEmployeesForManager(managerUserId) {
   const managerId = new mongoose.Types.ObjectId(managerUserId);
   const rows = await User.find({ role: "employee", addedBy: managerId })

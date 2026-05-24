@@ -1,4 +1,3 @@
-/** Görev tahmini / harcanan süreye göre verimlilik (%) */
 export function calcEfficiency(task) {
   if (task.status === "To Do" || !task.spent) return null;
   if (!task.estimated) return null;

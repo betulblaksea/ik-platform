@@ -1,6 +1,5 @@
 import { User } from "../models/User.js";
 
-/** İstek sahibine göre erişilebilir çalışan ID listesi */
 export async function getTeamScope(req) {
   const user = await User.findById(req.userId);
   if (!user) return null;

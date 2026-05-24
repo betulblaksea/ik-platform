@@ -1,5 +1,3 @@
-/** Kadro planlama için sayısal bağlam (metin üretmez). */
-
 function deptAttendance(checkIns, dept) {
   const rows = checkIns.filter((c) => c.dept === dept);
   if (!rows.length) return { rate: 85, avgDelay: 0, sample: 0 };
@@ -134,7 +132,6 @@ const TASK_STATUS_TR = {
   Done: "Tamamlandı",
 };
 
-/** LLM prompt'u — alan adları Türkçe, modele İngilizce yanıt vermemesi için */
 export function workforcePayloadForAi(context) {
   return {
     hedef: context.goalText,

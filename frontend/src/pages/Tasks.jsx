@@ -1,12 +1,6 @@
-// TasksPage.jsx
-// Core Tasks page — styled to match MorningChart.jsx
-// Requires: react-router-dom, lucide-react, framer-motion, tailwindcss
-// Place in: src/pages/TasksPage.jsx
-
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useManagerEmployees } from "../hooks/useManagerEmployees.js";
-import { isManagerRole } from "../utils/roleLabels.js";
 import { useTasks } from "../hooks/useTasks.js";
 import { uniqueDepts } from "../utils/employeeTeams.js";
 import { formatDuration, PRIORITY_META } from "../utils/taskTime.js";
@@ -16,7 +10,7 @@ import {
   CheckCircle2, Circle, Plus, Zap, Users, BarChart3,
   TrendingUp, TrendingDown, Search, X, Flame, AlertTriangle,
   Star, Sparkles, ShieldAlert, Trophy, Activity, ChevronRight,
-  Bell, Filter, ArrowUpRight, ArrowDownRight, Minus,
+  Filter, Pencil,
   Calendar, AlignLeft, Clock,
 } from "lucide-react";
 import { Layout } from "../components/Sidebar";
@@ -31,7 +25,6 @@ function avatarColor(avatar) {
   return AVATAR_PALETTE[code % AVATAR_PALETTE.length];
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function perfLabel(score) {
   if (score === null) return { label: "Beklemede", color: "#6b7280", bg: "rgba(107,114,128,0.15)", icon: Circle };
   if (score >= 115)   return { label: "Üstün", color: "#34d399", bg: "rgba(52,211,153,0.15)", icon: Star };
@@ -46,54 +39,6 @@ const STATUS_META = {
   "To Do":       { color: "#6b7280", icon: Circle,       label: "Yapılacak" },
 };
 
-// ── AI Analysis Engine ────────────────────────────────────────────────────────
-// DB-ready: replace `tasks` param with your API/DB response anytime.
-export function analyzeTeamPerformance(tasks) {
-  const teamNames  = [...new Set(tasks.map(t => t.team))];
-  const teamScores = teamNames.map(team => {
-    const scored = tasks.filter(t => t.team === team && calcEfficiency(t) !== null);
-    if (!scored.length) return null;
-    return { team, avg: Math.round(scored.reduce((s, t) => s + calcEfficiency(t), 0) / scored.length) };
-  }).filter(Boolean);
-
-  const bottleneck = teamScores.length ? teamScores.reduce((min, t) => t.avg < min.avg ? t : min) : null;
-
-  const employeeMap = {};
-  tasks.forEach(t => {
-    const eff = calcEfficiency(t);
-    if (eff === null) return;
-    if (!employeeMap[t.employee]) employeeMap[t.employee] = { scores: [], team: t.team };
-    employeeMap[t.employee].scores.push(eff);
-  });
-  const employeeAvgs = Object.entries(employeeMap).map(([name, d]) => ({
-    name, team: d.team,
-    avg: Math.round(d.scores.reduce((a, b) => a + b, 0) / d.scores.length),
-  }));
-  const star = employeeAvgs.length ? employeeAvgs.reduce((max, e) => e.avg > max.avg ? e : max) : null;
-
-  const risks = tasks.filter(t =>
-    t.status === "In Progress" && t.estimated > 0 && t.spent / t.estimated >= 0.9
-  );
-
-  return {
-    bottleneck: bottleneck ? {
-      team: bottleneck.team, avgEfficiency: bottleneck.avg, delta: 100 - bottleneck.avg,
-      message: `${bottleneck.team} departmanı darboğaz: ortalama verim %${bottleneck.avg} (hedefin %${100 - bottleneck.avg} altında).`,
-    } : null,
-    star: star ? {
-      employee: star.name, team: star.team, avgEfficiency: star.avg,
-      message: `${star.name} (${star.team}) en yüksek verim: %${star.avg}.`,
-    } : null,
-    risks: risks.map(t => ({
-      id: t.id, employee: t.employee, title: t.title, team: t.team,
-      burnPct: Math.round((t.spent / t.estimated) * 100),
-      message: `${t.employee} — "${t.title}": tahminin %${Math.round((t.spent / t.estimated) * 100)}'i harcandı, durum hâlâ devam ediyor.`,
-    })),
-    generatedAt: new Date().toISOString(),
-  };
-}
-
-// ── AI Coach Card ─────────────────────────────────────────────────────────────
 function AICoachCard({ tasks }) {
   const { run, loading, error, insight } = useAiInsight();
   const [open, setOpen] = useState(true);
@@ -160,65 +105,48 @@ function AICoachCard({ tasks }) {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="relative rounded-2xl overflow-hidden"
-      style={{
-        background: "linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(99,102,241,0.06) 100%)",
-        border: "1px solid rgba(139,92,246,0.28)",
-        boxShadow: "0 0 60px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.06)",
-      }}
+      className="ai-coach-card"
     >
-      <div className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)", transform: "translate(30%,-30%)" }} />
+      <div className="ai-coach-card__glow" />
 
       <motion.div
         animate={{ x: ["-100%", "100%"] }}
         transition={{ duration: 3.5, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
-        className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.8), transparent)" }}
+        className="ai-coach-card__shimmer"
       />
 
-      <div className="absolute bottom-0 left-0 right-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)" }} />
+      <div className="ai-coach-card__footer-line" />
 
-      <div className="flex items-center gap-4 px-5 py-4 cursor-pointer relative" onClick={() => setOpen(o => !o)}>
+      <div className="ai-coach-card__header" onClick={() => setOpen(o => !o)}>
         <div className="relative flex-shrink-0">
           <motion.div
             animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
-            className="absolute rounded-full"
-            style={{ inset: "-5px", background: "rgba(139,92,246,0.35)" }}
+            className="ai-coach-card__pulse"
           />
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.35)", boxShadow: "0 0 20px rgba(139,92,246,0.2)" }}>
-            <Sparkles size={17} style={{ color: "#c084fc" }} />
+          <div className="ai-coach-card__icon-box relative">
+            <Sparkles size={17} />
           </div>
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-sm font-bold text-white tracking-tight">Yapay Zeka Koçu</span>
-            <motion.div
-              animate={{ opacity: [1, 0.4, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity }}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em" }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              LIVE
-            </motion.div>
           </div>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-            {bullets.length} öngörü · Az önce güncellendi
+          <p className="text-xs page-header__subtitle">
+            {bullets.length} öngörü
           </p>
         </div>
 
-        <motion.div animate={{ rotate: open ? 90 : 0 }} transition={{ duration: 0.25 }}
-          style={{ color: "rgba(255,255,255,0.3)" }}>
+        <motion.div
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ duration: 0.25 }}
+          className="ai-coach-card__chevron"
+        >
           <ChevronRight size={16} />
         </motion.div>
       </div>
 
-      {/* Bullets */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -226,10 +154,10 @@ function AICoachCard({ tasks }) {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
+            className="collapse-panel"
           >
-            <div className="px-5 pb-5 space-y-2.5">
-              <div className="h-px mb-3" style={{ background: "rgba(255,255,255,0.05)" }} />
+            <div className="ai-coach-card__body space-y-2.5">
+              <div className="ai-coach-card__divider" />
               {bullets.map((b, i) => {
                 const BIcon = b.icon;
                 return (
@@ -238,17 +166,19 @@ function AICoachCard({ tasks }) {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.07, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex items-start gap-3 rounded-xl px-3.5 py-3"
-                    style={{ background: b.bg, border: `1px solid ${b.border}` }}
+                    className="insight-bullet"
+                    style={{
+                      "--bullet-bg": b.bg,
+                      "--bullet-border": b.border,
+                      "--bullet-color": b.color,
+                    }}
                   >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: `${b.color}18`, border: `1px solid ${b.color}30` }}>
-                      <BIcon size={13} style={{ color: b.color }} />
+                    <div className="insight-bullet__icon">
+                      <BIcon size={13} />
                     </div>
                     <div>
-                      <p className="font-bold mb-1 tracking-widest uppercase"
-                        style={{ color: b.color, fontSize: "9px", letterSpacing: "0.12em" }}>{b.label}</p>
-                      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>{b.text}</p>
+                      <p className="insight-bullet__label">{b.label}</p>
+                      <p className="insight-bullet__text">{b.text}</p>
                     </div>
                   </motion.div>
                 );
@@ -261,270 +191,307 @@ function AICoachCard({ tasks }) {
   );
 }
 
-// ── Stat Pill ─────────────────────────────────────────────────────────────────
-function StatPill({ label, value, sub, icon: Icon, color, trend }) {
-  const TrendIcon  = trend > 0 ? ArrowUpRight : trend < 0 ? ArrowDownRight : Minus;
-  const trendColor = trend > 0 ? "#ef4444"    : trend < 0 ? "#34d399"      : "#94a3b8";
+function StatPill({ label, value, sub, icon: Icon, color }) {
   return (
-    <div className="rounded-2xl p-4 flex flex-col gap-2"
-      style={{
-        background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-        border: "1px solid rgba(255,255,255,0.07)",
-      }}>
+    <div className="glass-stat flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</span>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: `${color}18`, border: `1px solid ${color}25` }}>
-          <Icon size={13} style={{ color }} />
+        <span className="glass-stat__label">{label}</span>
+        <div className="stat-icon" style={{ "--stat-color": color }}>
+          <Icon size={13} />
         </div>
       </div>
       <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
-      <div className="flex items-center gap-1">
-        <TrendIcon size={12} style={{ color: trendColor }} />
-        <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{sub}</span>
-      </div>
+      <span className="glass-stat__sub">{sub}</span>
     </div>
   );
 }
 
-// ── Team Efficiency Badge ─────────────────────────────────────────────────────
 function TeamEfficiencyBadge({ score }) {
   if (score === null) return null;
   const perf = perfLabel(score);
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-      style={{ background: perf.bg, border: `1px solid ${perf.color}44`, color: perf.color }}>
+    <div
+      className="perf-badge"
+      style={{ "--status-color": perf.color, "--badge-bg": perf.bg }}
+    >
       <Zap size={11} />
-      Team Avg: {score}%
+      Ekip ort.: %{score}
     </div>
   );
 }
 
-// ── Task Card ─────────────────────────────────────────────────────────────────
-function TaskCard({ task, index, canEdit, onUpdate, hideEmployee }) {
-  const efficiency  = calcEfficiency(task);
-  const perf        = perfLabel(efficiency);
-  const status      = STATUS_META[task.status];
-  const StatusIcon  = status.icon;
-  const PerfIcon    = perf.icon;
-  const color = avatarColor(task.avatar);
-  const barMax      = Math.max(task.estimated, task.spent, 1);
-  const unit = task.timeUnit || "days";
-  const priority = PRIORITY_META[task.priority] || PRIORITY_META.medium;
-  const quickAdds = unit === "days"
-    ? [{ label: "+0,5 gün", amount: 0.5 }, { label: "+1 gün", amount: 1 }]
-    : [{ label: "+30 dk", amount: 0.5 }, { label: "+1 sa", amount: 1 }, { label: "+2 sa", amount: 2 }];
+function CompleteHoursModal({ onClose, onSubmit, submitting }) {
+  const [hours, setHours] = useState("");
 
-  const addSpent = (amount) => onUpdate?.(task.id, { spent: Math.round((task.spent + amount) * 10) / 10 });
-  const setStatus = (s) => onUpdate?.(task.id, { status: s });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const spent = parseFloat(hours);
+    if (!spent || spent <= 0) return;
+    await onSubmit(spent);
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ delay: index * 0.05, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl p-5 relative overflow-hidden cursor-default"
-      style={{
-        background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        transition: "border-color 0.2s, background 0.2s",
-      }}
-      whileHover={{
-        y: -2,
-        transition: { duration: 0.2 },
-      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="modal-backdrop"
+      onClick={onClose}
     >
-      {/* Top glow line */}
-      <div className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${perf.color}44, transparent)` }} />
-
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4 gap-2">
-        <div className="flex gap-2.5 items-center min-w-0">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-            style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
-            {task.avatar}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white leading-snug">{task.title}</p>
-            {!hideEmployee ? (
-              <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{task.employee}</p>
-            ) : null}
-            {task.description ? (
-              <p className="text-xs mt-1 line-clamp-2" style={{ color: "rgba(255,255,255,0.4)" }}>{task.description}</p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-            style={{ background: `${priority.color}18`, color: priority.color, border: `1px solid ${priority.color}44` }}>
-            {priority.label}
-          </span>
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-            style={{ background: `${status.color}18`, border: `1px solid ${status.color}33`, color: status.color }}>
-            <StatusIcon size={10} />
-            {status.label || task.status}
-          </div>
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-            style={{ background: perf.bg, border: `1px solid ${perf.color}44`, color: perf.color }}>
-            <PerfIcon size={10} />
-            {efficiency !== null ? `${efficiency}% ` : ""}{perf.label}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-3 text-[10px]">
-        {task.dueDate ? (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
-            <Calendar size={10} />
-            Son: {task.dueDate}
-          </span>
-        ) : null}
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg"
-          style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
-          <Clock size={10} />
-          {unit === "days" ? "Gün bazlı" : "Saat bazlı"}
-        </span>
-      </div>
-
-      {/* Progress bars */}
-      <div className="space-y-2.5">
-        {[
-          { label: unit === "days" ? "TAHMİN" : "TAHMİN SÜRE", value: task.estimated, pct: (task.estimated / barMax) * 100, barColor: "linear-gradient(90deg,#334155,#64748b)", textColor: "rgba(255,255,255,0.5)", delay: 0.3 },
-          { label: unit === "days" ? "HARCANAN" : "ÇALIŞILAN", value: task.spent,    pct: (task.spent / barMax) * 100,
-            barColor: efficiency === null ? "rgba(107,114,128,0.4)" : efficiency >= 100 ? "linear-gradient(90deg,#059669,#34d399)" : efficiency >= 80 ? "linear-gradient(90deg,#d97706,#fbbf24)" : "linear-gradient(90deg,#dc2626,#f87171)",
-            textColor: perf.color, delay: 0.4 },
-        ].map(bar => (
-          <div key={bar.label}>
-            <div className="flex justify-between mb-1">
-              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em" }}>{bar.label}</span>
-              <span className="text-xs font-bold" style={{ color: bar.textColor }}>{formatDuration(bar.value, unit)}</span>
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.94, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        onClick={(e) => e.stopPropagation()}
+        className="modal-panel"
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="flex justify-between items-start mb-4 gap-3">
+            <div>
+              <span className="text-lg font-bold text-white block">Görevi tamamla</span>
+              <span className="text-xs page-header__subtitle">Bu iş kaç saat sürdü?</span>
             </div>
-            <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${bar.pct}%` }}
-                transition={{ delay: index * 0.05 + bar.delay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full rounded-full"
-                style={{ background: bar.barColor }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {canEdit && onUpdate ? (
-        <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap gap-2">
-          {quickAdds.map((q) => (
-          <button key={q.label} type="button" onClick={() => addSpent(q.amount)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-300"
-            style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)" }}>
-            {q.label}
-          </button>
-          ))}
-          {["To Do", "In Progress", "Done"].map((s) => (
-            <button key={s} type="button" onClick={() => setStatus(s)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{
-                background: task.status === s ? `${STATUS_META[s].color}22` : "rgba(255,255,255,0.04)",
-                border: `1px solid ${task.status === s ? STATUS_META[s].color + "44" : "rgba(255,255,255,0.08)"}`,
-                color: task.status === s ? STATUS_META[s].color : "rgba(255,255,255,0.4)",
-              }}>
-              {STATUS_META[s].label}
+            <button type="button" onClick={onClose} className="modal-close-btn">
+              <X size={18} />
             </button>
-          ))}
-        </div>
-      ) : null}
+          </div>
+          <div className="mb-6">
+            <label className="field-label">Harcanan süre (saat)</label>
+            <input
+              autoFocus
+              required
+              type="number"
+              min="0.5"
+              step="0.5"
+              placeholder="Örn: 4"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              className="field-input"
+            />
+          </div>
+          <button type="submit" disabled={submitting} className="btn-submit-form">
+            {submitting ? "Kaydediliyor…" : "Tamamlandı olarak kaydet"}
+          </button>
+        </form>
+      </motion.div>
     </motion.div>
   );
 }
 
-// ── Add Task Modal ────────────────────────────────────────────────────────────
+function TaskCard({ task, index, canChangeStatus, canEditMeta, onUpdate, onEdit, hideEmployee }) {
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const status = STATUS_META[task.status];
+  const StatusIcon = status.icon;
+  const color = avatarColor(task.avatar);
+  const unit = task.timeUnit || "hours";
+  const priority = PRIORITY_META[task.priority] || PRIORITY_META.medium;
+
+  const setStatus = async (s) => {
+    if (s === "Done" && (!task.spent || task.spent <= 0)) {
+      setCompleteOpen(true);
+      return;
+    }
+    await onUpdate?.(task.id, { status: s });
+  };
+
+  const completeWithHours = async (spent) => {
+    setSaving(true);
+    try {
+      await onUpdate?.(task.id, { status: "Done", spent });
+      setCompleteOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ delay: index * 0.05, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className="task-card--main"
+        whileHover={{ y: -2, transition: { duration: 0.2 } }}
+      >
+        <div
+          className="task-card__accent-line"
+          style={{ "--status-color": status.color }}
+        />
+
+        <div className="flex justify-between items-start mb-3 gap-2">
+          <div className="flex gap-2.5 items-start min-w-0 flex-1">
+            <div className="task-avatar" style={{ "--avatar-color": color }}>
+              {task.avatar}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white leading-snug">{task.title}</p>
+              {!hideEmployee ? (
+                <p className="text-xs mt-0.5 truncate page-header__subtitle">{task.employee}</p>
+              ) : null}
+              {task.description ? (
+                <p className="text-xs mt-1 line-clamp-2 text-[var(--text-label)]">{task.description}</p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <span className="color-badge" style={{ "--status-color": priority.color }}>
+              {priority.label}
+            </span>
+            <div className="color-badge color-badge--md" style={{ "--status-color": status.color }}>
+              <StatusIcon size={10} />
+              {status.label}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          {task.dueDate ? (
+            <span className="task-meta-chip">
+              <Calendar size={10} />
+              Son: {task.dueDate}
+            </span>
+          ) : null}
+          {task.estimated > 0 ? (
+            <span className="task-meta-chip">
+              <Clock size={10} />
+              Tahmini: {formatDuration(task.estimated, unit)}
+            </span>
+          ) : null}
+          {task.status === "Done" && task.spent > 0 ? (
+            <span className="task-meta-chip task-meta-chip--done">
+              <CheckCircle2 size={10} />
+              {formatDuration(task.spent, unit)} sürdü
+            </span>
+          ) : null}
+        </div>
+
+        {(canChangeStatus && onUpdate) || canEditMeta ? (
+          <div className="task-card__footer">
+            {canEditMeta ? (
+              <button type="button" onClick={() => onEdit?.(task)} className="task-card__edit-btn">
+                <Pencil size={12} />
+                Düzenle
+              </button>
+            ) : null}
+            {canChangeStatus && onUpdate ? (
+              <div className="task-card__status-row">
+                {["To Do", "In Progress", "Done"].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatus(s)}
+                    className={`status-btn ${task.status === s ? "status-btn--active" : ""}`}
+                    style={{ "--status-color": STATUS_META[s].color }}
+                  >
+                    {STATUS_META[s].label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </motion.div>
+
+      <AnimatePresence>
+        {completeOpen ? (
+          <CompleteHoursModal
+            onClose={() => setCompleteOpen(false)}
+            onSubmit={completeWithHours}
+            submitting={saving}
+          />
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
+
 const INITIAL_FORM = {
   employee: "",
   title: "",
   description: "",
   priority: "medium",
   dueDate: "",
-  timeUnit: "hours",
   estimated: "8",
-  spent: "0",
-  status: "To Do",
 };
 
-function AddTaskModal({ team, employees, isEmployee, onClose, onSubmit, submitting }) {
-  const [form, setForm] = useState(INITIAL_FORM);
+function taskToForm(task) {
+  return {
+    employee: task.employee || "",
+    title: task.title || "",
+    description: task.description || "",
+    priority: task.priority || "medium",
+    dueDate: task.dueDate || "",
+    estimated: String(task.estimated ?? 8),
+  };
+}
+
+function TaskFormModal({ mode, team, employees, isEmployee, task, onClose, onSubmit, submitting }) {
+  const isEdit = mode === "edit";
+  const [form, setForm] = useState(() => (isEdit ? taskToForm(task) : { ...INITIAL_FORM }));
   const up = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const setTimeUnit = (unit) => {
-    setForm((f) => ({
-      ...f,
-      timeUnit: unit,
-      estimated: unit === "hours" ? (Number(f.estimated) <= 3 ? "8" : f.estimated) : (Number(f.estimated) >= 8 ? "1" : f.estimated),
-    }));
-  };
-
-  const handleAdd = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title?.trim()) return;
-    if (!isEmployee && !form.employee) return;
+    if (!isEdit && !isEmployee && !form.employee) return;
 
-    const emp = employees.find((e) => e.name === form.employee);
-    await onSubmit({
+    const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
       priority: form.priority,
       dueDate: form.dueDate,
-      timeUnit: form.timeUnit,
-      status: form.status,
+      timeUnit: "hours",
       estimated: parseFloat(form.estimated) || 0,
-      spent: parseFloat(form.spent) || 0,
-      employeeId: emp?.id,
-    });
+    };
+
+    if (isEdit) {
+      await onSubmit(task.id, payload);
+    } else {
+      const emp = employees.find((e) => e.name === form.employee);
+      await onSubmit({ ...payload, employeeId: emp?.id });
+    }
     onClose();
   };
 
-  const estLabel = form.timeUnit === "days" ? "Tahmini süre (gün)" : "Tahmini süre (saat)";
-  const spentLabel = form.timeUnit === "days" ? "Şimdiye kadar harcanan (gün)" : "Şimdiye kadar çalışılan (saat)";
-  const estStep = form.timeUnit === "hours" ? "0.5" : "0.5";
-  const estPlaceholder = form.timeUnit === "hours" ? "8" : "1";
+  const title = isEdit
+    ? "Görevi düzenle"
+    : isEmployee
+      ? "Yeni görev ekle"
+      : "Ekibe görev ata";
 
   return (
     <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(6,6,15,0.75)", backdropFilter: "blur(8px)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="modal-backdrop"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.94, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         onClick={(e) => e.stopPropagation()}
-        className="rounded-2xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto"
-        style={{
-          background: "#0d0d1f", border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-        }}
+        className="modal-panel modal-panel--wide"
       >
-        <form onSubmit={handleAdd}>
+        <form onSubmit={handleSubmit}>
           <div className="flex justify-between items-start mb-6 gap-3">
             <div>
-              <span className="text-lg font-bold text-white block">
-                {isEmployee ? "Yeni görev ekle" : "Ekibe görev ata"}
-              </span>
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                {isEmployee ? "İşinizi detaylı tanımlayın; süreyi saat veya gün olarak girin." : `Departman: ${team}`}
+              <span className="text-lg font-bold text-white block">{title}</span>
+              <span className="text-xs page-header__subtitle">
+                {isEdit ? "Başlık, açıklama ve tahmini süreyi güncelleyin." : isEmployee ? "İşinizi kısaca tanımlayın." : `Departman: ${team}`}
               </span>
             </div>
-            <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <button type="button" onClick={onClose} className="modal-close-btn">
               <X size={18} />
             </button>
           </div>
 
-          {!isEmployee && employees.length > 0 ? (
+          {!isEdit && !isEmployee && employees.length > 0 ? (
             <div className="mb-4">
               <label className="field-label">Çalışan *</label>
               <select
@@ -540,6 +507,13 @@ function AddTaskModal({ team, employees, isEmployee, onClose, onSubmit, submitti
                     <option key={e.id} value={e.name}>{e.name} — {e.dept}</option>
                   ))}
               </select>
+            </div>
+          ) : null}
+
+          {isEdit && !isEmployee ? (
+            <div className="mb-4">
+              <label className="field-label">Atanan</label>
+              <p className="text-sm text-[var(--text-label)]">{task.employee}</p>
             </div>
           ) : null}
 
@@ -577,12 +551,8 @@ function AddTaskModal({ team, employees, isEmployee, onClose, onSubmit, submitti
                   key={key}
                   type="button"
                   onClick={() => up("priority", key)}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
-                  style={{
-                    background: form.priority === key ? `${meta.color}22` : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${form.priority === key ? meta.color + "55" : "rgba(255,255,255,0.08)"}`,
-                    color: form.priority === key ? meta.color : "rgba(255,255,255,0.4)",
-                  }}
+                  className={`choice-btn ${form.priority === key ? "choice-btn--active" : ""}`}
+                  style={{ "--status-color": meta.color }}
                 >
                   {meta.label}
                 </button>
@@ -603,126 +573,31 @@ function AddTaskModal({ team, employees, isEmployee, onClose, onSubmit, submitti
             />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="field-label flex items-center gap-1.5">
               <Clock size={11} />
-              Süre birimi
+              Tahmini süre (saat)
             </label>
-            <div className="flex gap-2 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              {[
-                { id: "hours", label: "Saat" },
-                { id: "days", label: "Gün" },
-              ].map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => setTimeUnit(u.id)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                  style={{
-                    background: form.timeUnit === u.id ? "rgba(99,102,241,0.35)" : "transparent",
-                    color: form.timeUnit === u.id ? "#c7d2fe" : "rgba(255,255,255,0.4)",
-                  }}
-                >
-                  {u.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-              {form.timeUnit === "hours"
-                ? "Kısa işler için saat kullanın (ör. 4 saat, 7,5 saat)."
-                : "Uzun işler için gün kullanın (ör. 2 gün, 0,5 gün)."}
-            </p>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="8"
+              value={form.estimated}
+              onChange={(e) => up("estimated", e.target.value)}
+              className="field-input"
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="field-label">{estLabel}</label>
-              <input
-                type="number"
-                min="0"
-                step={estStep}
-                required
-                placeholder={estPlaceholder}
-                value={form.estimated}
-                onChange={(e) => up("estimated", e.target.value)}
-                className="field-input"
-              />
-            </div>
-            <div>
-              <label className="field-label">{spentLabel}</label>
-              <input
-                type="number"
-                min="0"
-                step={estStep}
-                placeholder="0"
-                value={form.spent}
-                onChange={(e) => up("spent", e.target.value)}
-                className="field-input"
-              />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="field-label">Başlangıç durumu</label>
-            <div className="flex gap-2">
-              {["To Do", "In Progress", "Done"].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => up("status", s)}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
-                  style={{
-                    background: form.status === s ? `${STATUS_META[s].color}18` : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${form.status === s ? STATUS_META[s].color + "55" : "rgba(255,255,255,0.08)"}`,
-                    color: form.status === s ? STATUS_META[s].color : "rgba(255,255,255,0.35)",
-                  }}
-                >
-                  {STATUS_META[s].label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", border: "none" }}
-          >
-            {submitting ? "Kaydediliyor…" : "Görevi oluştur"}
+          <button type="submit" disabled={submitting} className="btn-submit-form">
+            {submitting ? "Kaydediliyor…" : isEdit ? "Değişiklikleri kaydet" : "Görevi oluştur"}
           </button>
         </form>
-
-        <style>{`
-          .field-label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.35);
-          }
-          .field-input {
-            width: 100%;
-            border-radius: 12px;
-            padding: 10px 14px;
-            font-size: 14px;
-            color: white;
-            outline: none;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-          }
-          .field-input:focus {
-            border-color: rgba(99,102,241,0.5);
-          }
-        `}</style>
       </motion.div>
     </motion.div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const { user } = useAuth();
   const isEmployee = user?.role === "employee";
@@ -734,6 +609,7 @@ export default function TasksPage() {
   const [activeTeam, setActiveTeam] = useState("Tümü");
   const [search,     setSearch]     = useState("");
   const [showModal,  setShowModal]  = useState(false);
+  const [editTask,   setEditTask]   = useState(null);
   const [modalTeam,  setModalTeam]  = useState("Genel");
   const [submitting, setSubmitting] = useState(false);
 
@@ -784,179 +660,137 @@ export default function TasksPage() {
   };
 
   const handleUpdateTask = async (id, patch) => {
+    await updateTask(id, patch);
+  };
+
+  const handleEditTask = async (id, patch) => {
+    setSubmitting(true);
     try {
       await updateTask(id, patch);
-    } catch {
-      /* useTasks error state */
+      setEditTask(null);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <Layout>
-      {/* ── Topbar — matches MorningChart header exactly ── */}
-      <header
-        className="sticky top-0 z-20 px-8 py-4 flex items-center gap-4"
-        style={{
-          background: "rgba(6,6,15,0.82)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          backdropFilter: "blur(20px)",
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-        }}
-      >
+      <header className="page-header">
         <div className="flex-1">
           <h1 className="text-xl font-bold text-white tracking-tight">
             {isEmployee ? "Görevlerim" : "Görev Yönetimi"}
           </h1>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-            {isEmployee ? "İşlerinizi ekleyin ve süreleri güncelleyin" : "Ekip verimliliği ve çalışma süreleri"}
+          <p className="page-header__subtitle">
+            {isEmployee ? "Görevlerinizi takip edin ve tamamlayın" : "Ekip görevleri ve ilerleme"}
           </p>
         </div>
 
-        {!isEmployee ? (
-          <>
-            <button className="w-9 h-9 rounded-xl flex items-center justify-center relative"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
-              <Bell size={15} style={{ color: "rgba(255,255,255,0.4)" }} />
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-violet-400" />
-            </button>
-          </>
-        ) : null}
-
-        {/* Add Task CTA */}
         <button
           onClick={() => openModal(isEmployee ? "Görevlerim" : (activeTeam === "Tümü" ? (deptList[0] || "Genel") : activeTeam))}
           disabled={!isEmployee && employees.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
-          style={{
-            background: "linear-gradient(135deg, #6366f1, #818cf8)",
-            border: "none", cursor: "pointer",
-            boxShadow: "0 4px 20px rgba(99,102,241,0.35)",
-          }}
+          className="btn-primary"
         >
           <Plus size={14} /> {isEmployee ? "Görev ekle" : "Görev ekle"}
         </button>
       </header>
 
-      {/* ── Page body ── */}
-      <div className="px-8 py-7 flex-1 space-y-6"
-        style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-
-        {error ? (
-          <div className="rounded-xl px-4 py-3 text-sm text-red-200"
-            style={{ background: "rgba(127,29,29,0.35)", border: "1px solid rgba(248,113,113,0.35)" }}>
-            {error}
-          </div>
-        ) : null}
+      <div className="page-body space-y-6">
+        {error ? <div className="alert-error">{error}</div> : null}
 
         {loading ? (
           <p className="text-sm text-gray-500">Görevler yükleniyor…</p>
         ) : null}
 
-        {/* AI Coach — yönetici ekibi için */}
         {!isEmployee && tasks.length > 0 ? <AICoachCard tasks={tasks} /> : null}
 
-        {/* KPI row */}
         <motion.div
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <StatPill label="Toplam görev" value={globalStats.total} sub={`${globalStats.todo} bekleyen`} icon={BarChart3} color="#818cf8" trend={0} />
-          <StatPill label="Devam eden" value={globalStats.active} sub={isEmployee ? "aktif işleriniz" : "tüm ekip"} icon={Flame} color="#f472b6" trend={1} />
-          <StatPill label="Tamamlanan" value={globalStats.done} sub="bu dönem" icon={CheckCircle2} color="#34d399" trend={-1} />
-          <StatPill label="Ort. verim" value={`${globalStats.avg}%`} sub={globalStats.avg >= 100 ? "Hedefte" : "Hedef altı"} icon={Zap} color="#fbbf24" trend={globalStats.avg >= 100 ? -1 : 1} />
+          <StatPill label="Toplam görev" value={globalStats.total} sub={`${globalStats.todo} bekleyen`} icon={BarChart3} color="#818cf8" />
+          <StatPill label="Devam eden" value={globalStats.active} sub={isEmployee ? "aktif işleriniz" : "tüm ekip"} icon={Flame} color="#f472b6" />
+          <StatPill label="Tamamlanan" value={globalStats.done} sub="bu dönem" icon={CheckCircle2} color="#34d399" />
+          <StatPill label="Ort. verim" value={`${globalStats.avg}%`} sub={globalStats.avg >= 100 ? "Hedefte" : "Hedef altı"} icon={Zap} color="#fbbf24" />
         </motion.div>
 
-        {/* Filters + Search */}
-        <motion.div className="flex gap-3 items-center"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        <motion.div
+          className="flex gap-3 items-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
           {!isEmployee && teamTabs.length > 0 ? (
-          <div className="flex gap-1 rounded-xl p-1"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            {teamTabs.map(t => (
-              <button key={t} onClick={() => setActiveTeam(t)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                style={{
-                  background: activeTeam === t ? "rgba(99,102,241,0.25)" : "transparent",
-                  border:     activeTeam === t ? "1px solid rgba(99,102,241,0.5)" : "1px solid transparent",
-                  color:      activeTeam === t ? "#a5b4fc" : "rgba(255,255,255,0.35)",
-                }}>{t}</button>
-            ))}
-          </div>
+            <div className="filter-tabs">
+              {teamTabs.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTeam(t)}
+                  className={`filter-tab ${activeTeam === t ? "filter-tab--active" : ""}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           ) : null}
 
-          {/* Search */}
           <div className="flex-1 relative">
-            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2"
-              style={{ color: "rgba(255,255,255,0.25)" }} />
+            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" />
             <input
-              value={search} onChange={e => setSearch(e.target.value)}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               placeholder={isEmployee ? "Görevlerde ara…" : "Görev veya çalışan ara…"}
-              className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+              className="search-field"
             />
           </div>
 
-          {/* Filter chip */}
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
+          <div className="filter-chip">
             <Filter size={11} />
             {isEmployee ? "Görevlerim" : activeTeam === "Tümü" ? "Tüm ekip" : activeTeam}
           </div>
         </motion.div>
 
-        {/* Team sections */}
         <AnimatePresence mode="wait">
-          <motion.div key={activeTeam} className="space-y-5"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div
+            key={activeTeam}
+            className="space-y-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
             {filteredTeams.map(({ team, tasks: tTasks, efficiency }) => (
               <motion.div
                 key={team}
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-2xl p-6"
-                style={{
-                  background: "linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.015) 100%)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                }}
+                className="team-section"
               >
-                {/* Team header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <Users size={14} style={{ color: "rgba(255,255,255,0.3)" }} />
+                    <Users size={14} className="text-[var(--text-dim)]" />
                     <span className="text-sm font-bold text-white tracking-tight">{team}</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}>
-                      {tTasks.length} tasks
-                    </span>
+                    <span className="team-section__count">{tTasks.length} görev</span>
                     <TeamEfficiencyBadge score={efficiency} />
                   </div>
-                  <button onClick={() => openModal(team)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
-                    style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8" }}>
-                    <Plus size={11} /> Add task
-                  </button>
                 </div>
 
-                {/* Divider */}
-                <div className="h-px mb-5"
-                  style={{ background: "linear-gradient(90deg, rgba(99,102,241,0.25), transparent)" }} />
+                <div className="team-section__divider" />
 
-                {/* Task grid */}
-                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+                <div className="task-grid">
                   <AnimatePresence>
                     {tTasks.map((task, i) => (
                       <TaskCard
                         key={task.id}
                         task={task}
                         index={i}
-                        canEdit={isEmployee ? task.employeeId === user?.id : isManagerRole(user?.role)}
+                        canChangeStatus={task.employeeId === user?.id}
+                        canEditMeta={task.createdById === user?.id}
                         hideEmployee={isEmployee}
                         onUpdate={handleUpdateTask}
+                        onEdit={setEditTask}
                       />
                     ))}
                   </AnimatePresence>
@@ -967,24 +801,24 @@ export default function TasksPage() {
         </AnimatePresence>
 
         {!isEmployee && employees.length === 0 && !loading && (
-          <div className="py-16 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <div className="py-16 empty-state">
             <Users size={32} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm">Görev atamak için önce Panel üzerinden personel ekleyin.</p>
           </div>
         )}
 
         {!loading && (isEmployee || employees.length > 0) && filteredTeams.length === 0 && (
-          <div className="py-16 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <div className="py-16 empty-state">
             <BarChart3 size={32} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm">Aramanızla eşleşen görev yok. Yeni görev ekleyebilirsiniz.</p>
           </div>
         )}
       </div>
 
-      {/* Add Task Modal */}
       <AnimatePresence>
-        {showModal && (
-          <AddTaskModal
+        {showModal ? (
+          <TaskFormModal
+            mode="create"
             team={modalTeam}
             employees={employees}
             isEmployee={isEmployee}
@@ -992,7 +826,19 @@ export default function TasksPage() {
             onClose={() => setShowModal(false)}
             onSubmit={handleCreateTask}
           />
-        )}
+        ) : null}
+        {editTask ? (
+          <TaskFormModal
+            mode="edit"
+            task={editTask}
+            team={editTask.team}
+            employees={employees}
+            isEmployee={isEmployee}
+            submitting={submitting}
+            onClose={() => setEditTask(null)}
+            onSubmit={handleEditTask}
+          />
+        ) : null}
       </AnimatePresence>
     </Layout>
   );

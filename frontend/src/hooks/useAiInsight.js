@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../lib/api.js";
 
-/** Backend OpenRouter (60s) + ağ payı */
 const AI_INSIGHT_TIMEOUT_MS = 90_000;
 
 export function useAiInsight() {

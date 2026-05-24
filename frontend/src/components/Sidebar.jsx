@@ -1,11 +1,6 @@
-// Sidebar.jsx
-// Standalone, reusable sidebar component.
-// Requires: react-router-dom, lucide-react, framer-motion, tailwindcss
-
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { formatPortalRole, isManagerRole } from "../utils/roleLabels.js";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -13,16 +8,14 @@ import {
   CheckSquare,
   Zap,
   LogOut,
-  Settings,
   Target,
 } from "lucide-react";
 
-// ─── Nav configuration ────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { label: "Panel",           icon: LayoutDashboard, path: "/dashboard",     managerOnly: true },
-  { label: "Kadro Planlama",  icon: Target,          path: "/workforce",     managerOnly: true },
-  { label: "Çalışma Saatleri", icon: SunMedium,       path: "/morning-chart", managerOnly: false },
-  { label: "Görevler",        icon: CheckSquare,     path: "/tasks",         managerOnly: false },
+  { label: "Panel", icon: LayoutDashboard, path: "/dashboard", managerOnly: true },
+  { label: "Kadro Planlama", icon: Target, path: "/workforce", managerOnly: true },
+  { label: "Çalışma Saatleri", icon: SunMedium, path: "/morning-chart", managerOnly: false },
+  { label: "Görevler", icon: CheckSquare, path: "/tasks", managerOnly: false },
 ];
 
 function profileInitials(name, email) {
@@ -36,11 +29,6 @@ function profileInitials(name, email) {
   return e ? e.slice(0, 2).toUpperCase() : "?";
 }
 
-function roleLabel(role) {
-  return formatPortalRole(role);
-}
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
 export default function Sidebar() {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
@@ -52,156 +40,72 @@ export default function Sidebar() {
   }, []);
 
   const displayName = (user?.name || "").trim() || user?.email || "Kullanıcı";
-  const hasName = Boolean((user?.name || "").trim());
   const managerName =
     user?.role === "employee" && user?.addedBy
       ? (user.addedBy.name || user.addedBy.email)
       : null;
-  const subtitle = user?.email ? roleLabel(user.role) : "—";
-  const detailLine = user?.email
-    ? hasName
-      ? managerName
-        ? `${subtitle} · Yönetici: ${managerName}`
-        : `${subtitle} · ${user.email}`
-      : managerName
-        ? `${subtitle} · Yönetici: ${managerName}`
-        : subtitle
-    : subtitle;
+  const detailLine = managerName
+    ? `${user?.role ?? "—"} · ${managerName}`
+    : user?.email || "—";
   const initials = profileInitials(user?.name, user?.email);
 
+  const navItems =
+    user?.role === "employee"
+      ? NAV_ITEMS.filter((item) => item.path === "/morning-chart" || item.path === "/tasks")
+      : NAV_ITEMS.filter((item) => !item.managerOnly || user?.role === "manager");
+
   return (
-    <aside
-      className="fixed left-0 top-0 bottom-0 w-64 flex flex-col z-30 select-none"
-      style={{
-        background:
-          "linear-gradient(180deg, rgba(255,255,255,0.038) 0%, rgba(255,255,255,0.016) 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.07)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-      }}
-    >
-      {/* ── Logo ── */}
-      <div
-        className="px-6 pt-7 pb-6 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-              boxShadow: "0 0 20px rgba(99,102,241,0.4)",
-            }}
-          >
-            <Zap size={15} className="text-white" />
-          </div>
-          <div>
-            <div className="text-sm font-bold text-white tracking-tight">OrbisHQ</div>
-            <div className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-              Enterprise Suite
-            </div>
-          </div>
+    <aside className="sidebar">
+      <div className="sidebar__logo-wrap">
+        <div className="sidebar__logo">
+          <Zap size={15} className="text-white" />
         </div>
       </div>
 
-      {/* ── Nav ── */}
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        <p
-          className="px-3 mb-3 text-xs font-semibold tracking-widest uppercase"
-          style={{ color: "rgba(255,255,255,0.2)", fontSize: "9px", letterSpacing: "0.16em" }}
-        >
+        <p className="sidebar__nav-label">
           {user?.role === "employee" ? "İşlerim" : "Menü"}
         </p>
 
-        {(user?.role === "employee"
-          ? NAV_ITEMS.filter((item) => item.path === "/morning-chart" || item.path === "/tasks")
-          : NAV_ITEMS.filter((item) => !item.managerOnly || isManagerRole(user?.role))
-        ).map(({ label, icon: Icon, path }) => {
+        {navItems.map(({ label, icon: Icon, path }) => {
           const active = pathname === path;
           return (
-            <Link key={path} to={path} style={{ textDecoration: "none" }}>
+            <Link key={path} to={path} className="sidebar__link">
               <motion.div
                 whileHover={{ x: 3 }}
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer"
-                style={{
-                  background: active
-                    ? "rgba(59,130,246,0.12)"
-                    : "transparent",
-                  border: active
-                    ? "1px solid rgba(59,130,246,0.22)"
-                    : "1px solid transparent",
-                  color: active ? "#93c5fd" : "rgba(255,255,255,0.38)",
-                  transition: "background 0.2s, border 0.2s, color 0.2s",
-                }}
+                className={`sidebar__nav-item${active ? " sidebar__nav-item--active" : ""}`}
               >
-                {/* Active indicator bar */}
-                {active && (
+                {active ? (
                   <motion.div
                     layoutId="activeBar"
-                    className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
-                    style={{ background: "#3b82f6" }}
+                    className="sidebar__nav-bar"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
-                )}
-
+                ) : null}
                 <Icon size={16} />
                 <span className="text-sm font-medium">{label}</span>
-
-                {active && (
-                  <div
-                    className="ml-auto w-1.5 h-1.5 rounded-full"
-                    style={{ background: "#3b82f6" }}
-                  />
-                )}
+                {active ? <div className="sidebar__nav-dot" /> : null}
               </motion.div>
             </Link>
           );
         })}
       </nav>
 
-      {/* ── Live clock pill ── */}
-      <div className="px-4 pb-4">
-        <div
-          className="rounded-xl px-4 py-3 text-center"
-          style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.06)",
-          }}
-        >
-          <p
-            className="text-xs font-mono font-semibold text-white tracking-widest"
-            style={{ letterSpacing: "0.12em" }}
-          >
-            {time.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
-            {time.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-          </p>
-        </div>
+      <div className="sidebar__clock">
+        <p className="sidebar__clock-time">
+          {time.toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </p>
+        <p className="sidebar__clock-date">
+          {time.toLocaleDateString("tr-TR", { weekday: "short", month: "short", day: "numeric" })}
+        </p>
       </div>
 
-      {/* ── Bottom controls ── */}
-      <div
-        className="px-3 pb-6 pt-4 space-y-1"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        {isManagerRole(user?.role) ? (
-        <div
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
-          style={{ color: "rgba(255,255,255,0.28)" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
-          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.28)")}
-        >
-          <Settings size={15} />
-          <span className="text-sm">Ayarlar</span>
-        </div>
-        ) : null}
+      <div className="sidebar__footer">
         <div
           role="button"
           tabIndex={0}
@@ -212,89 +116,35 @@ export default function Sidebar() {
               signOut();
             }
           }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
-          style={{ color: "rgba(255,255,255,0.28)" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
-          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.28)")}
+          className="sidebar__signout"
         >
           <LogOut size={15} />
           <span className="text-sm">Çıkış</span>
         </div>
 
-        {/* User chip */}
-        <div
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl mt-2"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.07)",
-          }}
-        >
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #3b82f6, #8b5cf6)" }}
-          >
-            {initials}
-          </div>
+        <div className="sidebar__profile">
+          <div className="sidebar__avatar">{initials}</div>
           <div className="min-w-0">
-            <div className="text-xs font-semibold text-white leading-none truncate">
-              {displayName}
-            </div>
-            <div
-              className="text-xs leading-none mt-0.5 truncate"
-              style={{ color: "rgba(255,255,255,0.3)" }}
-              title={user?.email || ""}
-            >
+            <div className="text-xs font-semibold text-white leading-none truncate">{displayName}</div>
+            <div className="sidebar__profile-detail truncate" title={user?.email || ""}>
               {detailLine}
             </div>
           </div>
-          <div
-            className="ml-auto w-2 h-2 rounded-full flex-shrink-0"
-            style={{ background: "#34d399" }}
-          />
         </div>
       </div>
     </aside>
   );
 }
 
-// ─── Layout wrapper (exported from same file for convenience) ─────────────────
-// Usage:
-//   <Layout>
-//     <YourPageContent />
-//   </Layout>
 export function Layout({ children }) {
   return (
-    <div
-      className="min-h-screen flex"
-      style={{
-        background: "#06060f",
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-      }}
-    >
-      {/* Ambient blobs */}
+    <div className="app-shell">
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div
-          className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-20"
-          style={{
-            background: "radial-gradient(circle, #3b82f622 0%, transparent 70%)",
-            filter: "blur(60px)",
-          }}
-        />
-        <div
-          className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full opacity-15"
-          style={{
-            background: "radial-gradient(circle, #8b5cf622 0%, transparent 70%)",
-            filter: "blur(60px)",
-          }}
-        />
+        <div className="app-shell__blob app-shell__blob--tl" />
+        <div className="app-shell__blob app-shell__blob--br" />
       </div>
-
       <Sidebar />
-
-      {/* Content area — offset by sidebar width */}
-      <main className="flex-1 ml-64 min-h-screen flex flex-col relative z-10">
-        {children}
-      </main>
+      <main className="app-main">{children}</main>
     </div>
   );
 }

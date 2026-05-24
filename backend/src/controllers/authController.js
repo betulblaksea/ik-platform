@@ -32,18 +32,18 @@ export async function register(req, res) {
   try {
     const { email, password, name = "", role = "employee" } = req.body ?? {};
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "E-posta ve şifre zorunludur" });
     }
     if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+      return res.status(400).json({ message: "Şifre en az 6 karakter olmalıdır" });
     }
     if (role !== "employee" && role !== "manager") {
-      return res.status(400).json({ message: "Invalid role" });
+      return res.status(400).json({ message: "Geçersiz rol" });
     }
 
     const existing = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (existing) {
-      return res.status(409).json({ message: "Email already registered" });
+      return res.status(409).json({ message: "Bu e-posta zaten kayıtlı" });
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -58,7 +58,7 @@ export async function register(req, res) {
     return res.status(201).json({ token, user: userResponse(user) });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Registration failed" });
+    return res.status(500).json({ message: "Kayıt işlemi başarısız" });
   }
 }
 
@@ -66,19 +66,19 @@ export async function login(req, res) {
   try {
     const { email, password, role: portalRole } = req.body ?? {};
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "E-posta ve şifre zorunludur" });
     }
 
     const user = await User.findOne({ email: String(email).toLowerCase().trim() }).select(
       "+password"
     );
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Geçersiz e-posta veya şifre" });
     }
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Geçersiz e-posta veya şifre" });
     }
 
     if (
@@ -86,14 +86,14 @@ export async function login(req, res) {
       (portalRole === "employee" || portalRole === "manager") &&
       user.role !== portalRole
     ) {
-      return res.status(403).json({ message: "This account cannot sign in with the selected role" });
+      return res.status(403).json({ message: "Bu hesap seçilen rol ile giriş yapamaz" });
     }
 
     const token = signToken(user._id);
     return res.json({ token, user: userResponse(user) });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Login failed" });
+    return res.status(500).json({ message: "Giriş işlemi başarısız" });
   }
 }
 
@@ -101,16 +101,15 @@ export async function me(req, res) {
   try {
     const user = await User.findById(req.userId).populate("addedBy", "name email");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
     }
     return res.json({ user: userResponse(user) });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Could not load profile" });
+    return res.status(500).json({ message: "Profil yüklenemedi" });
   }
 }
 
-// backend/src/controllers/userController.js (veya authController)
 export const addEmployee = async (req, res) => {
   try {
     const { name, email, password, position, dept } = req.body ?? {};
@@ -118,13 +117,13 @@ export const addEmployee = async (req, res) => {
       return res.status(400).json({ message: "Ad, e-posta ve şifre zorunludur" });
     }
     if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+      return res.status(400).json({ message: "Şifre en az 6 karakter olmalıdır" });
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
-      return res.status(409).json({ message: "Email already registered" });
+      return res.status(409).json({ message: "Bu e-posta zaten kayıtlı" });
     }
 
     const hash = await bcrypt.hash(password, 10);

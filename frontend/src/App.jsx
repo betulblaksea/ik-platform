@@ -5,10 +5,8 @@ import MorningChart from "./pages/MorningChart";
 import Tasks from "./pages/Tasks";
 import WorkforcePlanning from "./pages/WorkforcePlanning";
 import LoginPage from "./pages/Login";
-import { isManagerRole } from "./utils/roleLabels.js";
-
 function homePath(user) {
-  return isManagerRole(user?.role) ? "/dashboard" : "/tasks";
+  return user?.role === "manager" ? "/dashboard" : "/tasks";
 }
 
 function LoginRoute() {
@@ -26,7 +24,7 @@ function ProtectedRoute({ children }) {
 function ManagerRoute({ children }) {
   const { token, user } = useAuth();
   if (!token) return <Navigate to="/" replace />;
-  if (!isManagerRole(user?.role)) return <Navigate to="/tasks" replace />;
+  if (user?.role !== "manager") return <Navigate to="/tasks" replace />;
   return children;
 }
 

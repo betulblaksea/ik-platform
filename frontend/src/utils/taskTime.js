@@ -1,4 +1,3 @@
-/** Süreyi okunabilir metne çevirir */
 export function formatDuration(value, unit = "hours") {
   const v = Number(value) || 0;
   if (unit === "days") {

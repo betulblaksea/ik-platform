@@ -56,6 +56,7 @@ export async function createTask(req, res) {
 
     const task = await Task.create({
       employeeId: targetId,
+      createdBy: scope.user._id,
       title: String(title).trim(),
       description: String(description || "").trim(),
       priority: ["low", "medium", "high"].includes(priority) ? priority : "medium",
@@ -83,19 +84,40 @@ export async function updateTask(req, res) {
     const task = await Task.findById(req.params.id).populate("employeeId", "name email dept position");
     if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
 
-    if (!scope.employeeIds.some((id) => id.toString() === task.employeeId._id.toString())) {
+    const assigneeId = task.employeeId._id?.toString?.() ?? String(task.employeeId);
+    if (!scope.employeeIds.some((id) => id.toString() === assigneeId)) {
       return res.status(403).json({ message: "Bu göreve erişim yok" });
     }
 
+    const creatorId = task.createdBy?.toString?.() ?? assigneeId;
+    const isCreator = creatorId === scope.user._id.toString();
+    const isAssignee = assigneeId === scope.user._id.toString();
+
     const { title, description, priority, dueDate, timeUnit, status, estimated, spent } = req.body ?? {};
-    if (title != null) task.title = String(title).trim();
-    if (description != null) task.description = String(description).trim();
-    if (priority != null && ["low", "medium", "high"].includes(priority)) task.priority = priority;
-    if (dueDate != null) task.dueDate = String(dueDate);
-    if (timeUnit != null && ["hours", "days"].includes(timeUnit)) task.timeUnit = timeUnit;
-    if (status != null) task.status = status;
-    if (estimated != null) task.estimated = Number(estimated);
-    if (spent != null) task.spent = Number(spent);
+
+    if (!isCreator && !isAssignee) {
+      return res.status(403).json({ message: "Bu görevi güncelleyemezsiniz" });
+    }
+
+    if (!isCreator) {
+      if (status != null) task.status = status;
+      if (spent != null) task.spent = Math.max(0, Number(spent));
+      if (status === "Done" && task.spent <= 0) {
+        return res.status(400).json({ message: "Tamamlamak için süre (saat) girin" });
+      }
+    } else {
+      if (title != null) task.title = String(title).trim();
+      if (description != null) task.description = String(description).trim();
+      if (priority != null && ["low", "medium", "high"].includes(priority)) task.priority = priority;
+      if (dueDate != null) task.dueDate = String(dueDate);
+      if (timeUnit != null && ["hours", "days"].includes(timeUnit)) task.timeUnit = timeUnit;
+      if (status != null) task.status = status;
+      if (estimated != null) task.estimated = Math.max(0, Number(estimated));
+      if (spent != null) task.spent = Math.max(0, Number(spent));
+      if (status === "Done" && task.spent <= 0) {
+        return res.status(400).json({ message: "Tamamlamak için süre (saat) girin" });
+      }
+    }
 
     await task.save();
     return res.json({ task: formatTask(task) });
@@ -128,9 +150,11 @@ export async function deleteTask(req, res) {
 function formatTask(task) {
   const emp = task.employeeId;
   const name = emp?.name || "Çalışan";
+  const assigneeId = emp?._id?.toString?.() || task.employeeId?.toString?.();
   return {
     id: task._id.toString(),
-    employeeId: emp?._id?.toString?.() || task.employeeId?.toString?.(),
+    employeeId: assigneeId,
+    createdById: task.createdBy?.toString?.() || assigneeId,
     team: task.team,
     employee: name,
     avatar: employeeInitialsFromUser(emp),

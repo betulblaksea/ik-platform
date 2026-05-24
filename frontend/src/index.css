@@ -1,1 +1,6 @@
 @import "tailwindcss";
+@import "./styles/theme.css";
+@import "./styles/shared.css";
+@import "./styles/layout.css";
+@import "./styles/login.css";
+@import "./styles/pages.css";

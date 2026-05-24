@@ -1,6 +1,5 @@
 import { avgEfficiency, teamEfficiency } from "./taskMetrics.js";
 
-/** UI kartları için ekip anlık görüntüsü (metin üretmez). */
 export function buildWorkforcePlanningContext({
   goalText = "",
   horizonMonths = 6,

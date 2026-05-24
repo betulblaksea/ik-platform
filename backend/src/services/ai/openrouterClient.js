@@ -1,7 +1,6 @@
 import { openaiCompatibleChatJson } from "./openaiCompatibleClient.js";
 
 const DEFAULT_BASE = "https://openrouter.ai/api/v1";
-/** Stabil ücretsiz model (openrouter/free bazen boş/kesik döner) */
 const DEFAULT_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free";
 const FALLBACK_MODELS = [
   "nvidia/nemotron-3-nano-30b-a3b:free",
@@ -50,7 +49,6 @@ function shouldTryNext(err) {
   );
 }
 
-/** https://openrouter.ai/keys */
 export async function openrouterChatJson(opts) {
   const baseUrl = process.env.OPENROUTER_BASE_URL?.trim() || DEFAULT_BASE;
   const preferred = opts.model || process.env.OPENROUTER_MODEL?.trim() || DEFAULT_MODEL;

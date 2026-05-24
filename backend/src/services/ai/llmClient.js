@@ -1,6 +1,5 @@
 import { openrouterChatJson, isOpenRouterConfigured } from "./openrouterClient.js";
 
-/** Yalnızca OpenRouter (ücretsiz DeepSeek V4 Flash) */
 export function getAiMode() {
   return "openrouter";
 }

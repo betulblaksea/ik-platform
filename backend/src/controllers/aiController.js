@@ -2,25 +2,11 @@ import {
   generateWorkforceInsight,
   generateMorningInsightFromData,
   generateTasksCoachInsight,
-  isAiConfigured,
   getAiInfo,
 } from "../services/ai/insightService.js";
-import { User } from "../models/User.js";
-
-async function assertManager(req, res) {
-  const user = await User.findById(req.userId);
-  if (!user || user.role !== "manager") {
-    res.status(403).json({ message: "Bu özellik yalnızca yöneticiler içindir" });
-    return null;
-  }
-  return user;
-}
 
 export async function postInsight(req, res) {
   try {
-    const user = await assertManager(req, res);
-    if (!user) return;
-
     const { type, input } = req.body ?? {};
     if (!type || !input) {
       return res.status(400).json({ message: "type ve input zorunludur" });
@@ -61,7 +47,5 @@ export async function postInsight(req, res) {
 }
 
 export async function getAiStatus(req, res) {
-  const user = await assertManager(req, res);
-  if (!user) return;
   return res.json(getAiInfo());
 }

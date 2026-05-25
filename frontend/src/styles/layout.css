@@ -84,29 +84,6 @@
   background: var(--accent-blue);
 }
 
-.sidebar__clock {
-  margin: 0 1rem 1rem;
-  padding: 0.75rem 1rem;
-  text-align: center;
-  border-radius: 0.75rem;
-  background: var(--glass-fill-soft);
-  border: 1px solid var(--border-subtle);
-}
-
-.sidebar__clock-time {
-  font-size: 0.75rem;
-  font-family: ui-monospace, monospace;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: 0.12em;
-}
-
-.sidebar__clock-date {
-  margin-top: 0.125rem;
-  font-size: 0.75rem;
-  color: var(--text-faint);
-}
-
 .sidebar__footer {
   padding: 1rem 0.75rem 1.5rem;
   border-top: 1px solid var(--border-subtle);

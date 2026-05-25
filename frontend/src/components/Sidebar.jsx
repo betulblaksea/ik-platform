@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { motion } from "framer-motion";
@@ -32,12 +31,6 @@ function profileInitials(name, email) {
 export default function Sidebar() {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const id = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const displayName = (user?.name || "").trim() || user?.email || "Kullanıcı";
   const managerName =
@@ -91,19 +84,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
-      <div className="sidebar__clock">
-        <p className="sidebar__clock-time">
-          {time.toLocaleTimeString("tr-TR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })}
-        </p>
-        <p className="sidebar__clock-date">
-          {time.toLocaleDateString("tr-TR", { weekday: "short", month: "short", day: "numeric" })}
-        </p>
-      </div>
 
       <div className="sidebar__footer">
         <div

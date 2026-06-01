@@ -1,4 +1,10 @@
-import { teamEfficiency } from "./taskMetrics.js";
+function teamEfficiency(tasks) {
+  const scored = tasks.filter((t) => t.status !== "To Do" && t.spent && t.estimated);
+  if (!scored.length) return null;
+  const avg =
+    scored.reduce((s, t) => s + Math.round((t.estimated / t.spent) * 100), 0) / scored.length;
+  return Math.round(avg);
+}
 
 export function buildWorkforcePlanningContext({
   goalText = "",

@@ -21,8 +21,8 @@ function isQuotaError(message, status) {
 function userFacingMessage(status, apiMessage, providerLabel) {
   if (status === 402 || /out of credits|insufficient_quota/i.test(apiMessage)) {
     return (
-      `${providerLabel}: Ücretsiz model kotası dolmuş olabilir. ` +
-      `OPENROUTER_MODEL=nvidia/nemotron-3-nano-30b-a3b:free deneyin veya openrouter.ai/credits`
+      `${providerLabel}: Günlük kota dolmuş olabilir. ` +
+      `console.groq.com üzerinden kotayı kontrol edin veya GROQ_MODEL değiştirin.`
     );
   }
   return apiMessage || `${providerLabel} HTTP ${status}`;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Target, Users, BarChart3,
@@ -12,7 +12,6 @@ import { useTasks } from "../hooks/useTasks.js";
 import { useCheckIns } from "../hooks/useCheckIns.js";
 import AiAnalysisNote from "../components/AiAnalysisNote.jsx";
 import { buildWorkforcePlanningContext } from "../utils/workforcePlanning.js";
-import { slimCheckInsForAi, slimEmployeesForAi, slimTasksForAi } from "../utils/aiPayload.js";
 import { useAiInsight } from "../hooks/useAiInsight.js";
 
 const FOCUS_OPTIONS = [
@@ -102,8 +101,7 @@ export default function WorkforcePlanning() {
   const [focus, setFocus] = useState("mobile");
   const [budget, setBudget] = useState("");
   const dataLoading = empLoading || taskLoading || ciLoading;
-  const { run, loading: aiLoading, error: aiError, insight, checkStatus, aiConfigured } = useAiInsight();
-  const [aiStatus, setAiStatus] = useState(null);
+  const { run, loading: aiLoading, error: aiError, insight } = useAiInsight();
 
   const context = useMemo(
     () =>
@@ -127,34 +125,23 @@ export default function WorkforcePlanning() {
       newProjectCount: projectCount,
       focus,
       monthlyBudgetTry: budget ? Number(budget) : null,
-      tasks: slimTasksForAi(tasks),
-      checkIns: slimCheckInsForAi(checkIns),
-      employees: slimEmployeesForAi(employees),
+      tasks,
+      checkIns,
+      employees,
     }),
     [goal, months, projectCount, focus, budget, tasks, checkIns, employees],
   );
 
-  const runAnalysis = useCallback(async () => {
+  const runAnalysis = () => {
     if (!goal.trim()) return;
-    await run("workforce", aiInput);
-  }, [run, goal, aiInput]);
-
-  useEffect(() => {
-    checkStatus().then((s) => s && setAiStatus(s));
-  }, [checkStatus]);
+    run("workforce", aiInput);
+  };
 
   const applyPreset = (p) => {
     setGoal(p.goal);
     setMonths(p.months);
     setProjectCount(p.projects);
     setFocus(p.focus);
-    run("workforce", {
-      ...aiInput,
-      goalText: p.goal,
-      horizonMonths: p.months,
-      newProjectCount: p.projects,
-      focus: p.focus,
-    }).catch(() => {});
   };
 
   return (
@@ -245,7 +232,7 @@ export default function WorkforcePlanning() {
             <div className="flex items-end">
               <button
                 type="button"
-                onClick={() => runAnalysis().catch(() => {})}
+                onClick={runAnalysis}
                 disabled={dataLoading || aiLoading || !goal.trim()}
                 className="btn-gradient-primary"
               >
@@ -275,12 +262,6 @@ export default function WorkforcePlanning() {
             </div>
           </div>
         </motion.div>
-
-        {aiConfigured === false ? (
-          <p className="alert-config-hint">
-            {aiStatus?.hint || "AI yapılandırılmadı. OPENROUTER_API_KEY kontrol edin."}
-          </p>
-        ) : null}
 
         {context.teamSnapshots?.length > 0 ? (
           <div>

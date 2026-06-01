@@ -1,4 +1,4 @@
-import { chatJson, isAiConfigured, getAiInfo } from "./llmClient.js";
+import { chatJson } from "./llmClient.js";
 import {
   buildWorkforcePlanningContext,
   workforcePayloadForAi,
@@ -88,7 +88,7 @@ function normalizeInsight(raw, defaults = {}) {
     actions: Array.isArray(raw.actions) ? raw.actions.slice(0, 6) : [],
     delayRiskPct: typeof raw.delayRiskPct === "number" ? raw.delayRiskPct : defaults.delayRiskPct ?? null,
     budgetHint: raw.budgetHint ?? defaults.budgetHint ?? null,
-    source: "openrouter",
+    source: "groq",
   };
 }
 
@@ -129,4 +129,3 @@ ${JSON.stringify(veri, null, 2)}${USER_LANG_FOOTER}`;
   return generateInsight(BASE_SYSTEM, user, 0.5);
 }
 
-export { isAiConfigured, getAiInfo };

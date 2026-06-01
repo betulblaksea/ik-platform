@@ -93,44 +93,13 @@ export function buildWorkforcePlanningContext({
   };
 }
 
-export function summarizeCheckInsForAi(checkIns) {
-  const byDept = {};
-  checkIns.forEach((c) => {
-    const d = c.dept || "Genel";
-    if (!byDept[d]) byDept[d] = { count: 0, late: 0, arrivals: [], categories: {} };
-    byDept[d].count++;
-    if ((c.delta || 0) > 0) byDept[d].late++;
-    if (c.arrival) byDept[d].arrivals.push(c.arrival);
-    const cat = c.category || "ontime";
-    byDept[d].categories[cat] = (byDept[d].categories[cat] || 0) + 1;
-  });
-
-  return {
-    totalRecords: checkIns.length,
-    byDept,
-    recentSample: checkIns.slice(0, 40).map((c) => ({
-      date: c.date,
-      dept: c.dept,
-      name: c.name,
-      arrival: c.arrival,
-      departure: c.departure,
-      delta: c.delta,
-      category: c.category,
-      expectedArrival: c.expectedArrival,
-      commuteMethod: c.commuteMethod,
-      workMode: c.workMode,
-      energyLevel: c.energyLevel,
-    })),
-  };
-}
-
 const TASK_STATUS_TR = {
   "To Do": "Yapılacak",
   "In Progress": "Devam ediyor",
   Done: "Tamamlandı",
 };
 
-export function summarizeTasksForAi(tasks) {
+function summarizeTasksForAi(tasks) {
   const byTeam = {};
   tasks.forEach((t) => {
     const team = t.team || "Genel";
@@ -208,35 +177,6 @@ export function workforcePayloadForAi(context) {
       gecKalan: context.checkInSummary.lateCount,
       kategoriler: context.checkInSummary.categories,
     },
-  };
-}
-
-export function summarizeCheckInsForAiTr(checkIns) {
-  const raw = summarizeCheckInsForAi(checkIns);
-  const byDept = {};
-  Object.entries(raw.byDept || {}).forEach(([dept, v]) => {
-    byDept[dept] = {
-      kayitSayisi: v.count,
-      gecKalan: v.late,
-      kategoriler: v.categories,
-    };
-  });
-  return {
-    toplamKayit: raw.totalRecords,
-    departmanlaraGore: byDept,
-    ornekKayitlar: (raw.recentSample || []).map((c) => ({
-      tarih: c.date,
-      departman: c.dept,
-      ad: c.name,
-      giris: c.arrival,
-      cikis: c.departure,
-      gecikmeDk: c.delta,
-      kategori: c.category,
-      beklenenGiris: c.expectedArrival,
-      ulasim: c.commuteMethod,
-      calismaModu: c.workMode,
-      enerji: c.energyLevel,
-    })),
   };
 }
 

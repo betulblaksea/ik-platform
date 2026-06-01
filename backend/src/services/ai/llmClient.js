@@ -1,36 +1,10 @@
-import { openrouterChatJson, isOpenRouterConfigured } from "./openrouterClient.js";
-
-export function getAiMode() {
-  return "openrouter";
-}
-
-export function isAiConfigured() {
-  return isOpenRouterConfigured();
-}
-
-export function getAiInfo() {
-  if (!isOpenRouterConfigured()) {
-    return {
-      configured: false,
-      provider: "openrouter",
-      model: null,
-      hint: "openrouter.ai/keys → OPENROUTER_API_KEY ekleyin",
-    };
-  }
-  return {
-    configured: true,
-    provider: "openrouter",
-    model: process.env.OPENROUTER_MODEL?.trim() || "nvidia/nemotron-3-nano-30b-a3b:free",
-    label: "OpenRouter · ücretsiz modeller",
-    hint: null,
-  };
-}
+import { groqChatJson, isGroqConfigured } from "./groqClient.js";
 
 export async function chatJson(opts) {
-  if (!isOpenRouterConfigured()) {
-    const err = new Error("OPENROUTER_API_KEY tanımlı değil");
+  if (!isGroqConfigured()) {
+    const err = new Error("GROQ_API_KEY tanımlı değil");
     err.code = "AI_NOT_CONFIGURED";
     throw err;
   }
-  return openrouterChatJson(opts);
+  return groqChatJson(opts);
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useManagerEmployees } from "../hooks/useManagerEmployees.js";
 import { useTasks } from "../hooks/useTasks.js";
@@ -14,8 +14,6 @@ import {
 import { Layout } from "../components/Sidebar";
 import AiAnalysisNote from "../components/AiAnalysisNote.jsx";
 import { useAiInsight } from "../hooks/useAiInsight.js";
-import { slimTasksForAi } from "../utils/aiPayload.js";
-
 const AVATAR_PALETTE = ["#60a5fa", "#f472b6", "#34d399", "#a78bfa", "#fbbf24", "#818cf8"];
 
 function avatarColor(avatar) {
@@ -31,24 +29,23 @@ const STATUS_META = {
 };
 
 function TasksAiInsight({ tasks }) {
-  const { run, loading, error, insight, setInsight } = useAiInsight();
-
-  const refresh = useCallback(() => {
-    if (!tasks.length) return;
-    run("tasks", { tasks: slimTasksForAi(tasks) }).catch(() => {});
-  }, [run, tasks]);
-
-  useEffect(() => {
-    if (!tasks.length) {
-      setInsight(null);
-      return;
-    }
-    const timer = setTimeout(refresh, 500);
-    return () => clearTimeout(timer);
-  }, [refresh, tasks, setInsight]);
+  const { run, loading, error, insight } = useAiInsight();
 
   if (!tasks.length) return null;
-  return <AiAnalysisNote insight={insight} loading={loading} error={error} />;
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={loading}
+        onClick={() => run("tasks", { tasks })}
+      >
+        {loading ? "Analiz hazırlanıyor…" : "AI analizi çalıştır"}
+      </button>
+      <AiAnalysisNote insight={insight} loading={loading} error={error} />
+    </div>
+  );
 }
 
 function StatPill({ label, value, sub, icon: Icon, color }) {

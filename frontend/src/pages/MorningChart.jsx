@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
@@ -20,8 +20,6 @@ import {
   deltaColor,
   groupCheckInsByEmployee,
 } from "../utils/checkInCharts.js";
-import { slimCheckInsForAi } from "../utils/aiPayload.js";
-
 const TODAY = new Date().toLocaleDateString("tr-TR", {
   weekday: "long", year: "numeric", month: "long", day: "numeric",
 });
@@ -270,30 +268,24 @@ function EmployeeGroup({ group, startIndex }) {
   );
 }
 
-function MorningAiInsight({ checkIns, range, dataLoading }) {
-  const { run, loading, error, insight, setInsight } = useAiInsight();
-
-  const refresh = useCallback(() => {
-    if (!checkIns.length) return;
-    run("morning", { checkIns: slimCheckInsForAi(checkIns) }).catch(() => {});
-  }, [run, checkIns]);
-
-  useEffect(() => {
-    setInsight(null);
-  }, [range, setInsight]);
-
-  useEffect(() => {
-    if (dataLoading) return;
-    if (!checkIns.length) {
-      setInsight(null);
-      return;
-    }
-    const timer = setTimeout(refresh, 800);
-    return () => clearTimeout(timer);
-  }, [refresh, checkIns, dataLoading, range, setInsight]);
+function MorningAiInsight({ checkIns, dataLoading }) {
+  const { run, loading, error, insight } = useAiInsight();
 
   if (dataLoading || !checkIns.length) return null;
-  return <AiAnalysisNote insight={insight} loading={loading} error={error} />;
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={loading}
+        onClick={() => run("morning", { checkIns })}
+      >
+        {loading ? "Analiz hazırlanıyor…" : "AI analizi çalıştır"}
+      </button>
+      <AiAnalysisNote insight={insight} loading={loading} error={error} />
+    </div>
+  );
 }
 
 function StatPill({ label, value, sub, icon: Icon, color }) {
@@ -318,7 +310,6 @@ export default function MorningChart() {
   const [range, setRange] = useState(isEmployee ? "week" : "today");
   const checkInQuery = range === "today" ? { date: today } : { days: 7 };
   const { checkIns, loading, error, saveToday, reload } = useCheckIns(checkInQuery);
-  const { run, loading: aiLoading, error: aiError, insight: aiInsight } = useAiInsight();
   const [activeCategory, setActiveCategory] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -418,7 +409,7 @@ export default function MorningChart() {
 
         {!isEmployee ? (
         <>
-        <MorningAiInsight checkIns={checkIns} range={range} dataLoading={loading} />
+        <MorningAiInsight checkIns={checkIns} dataLoading={loading} />
 
         <motion.div
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"

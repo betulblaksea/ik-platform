@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../lib/api.js";
 
@@ -8,7 +8,7 @@ export function useTasks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const reload = useCallback(async () => {
+  useEffect(() => {
     if (!token) {
       setTasks([]);
       setLoading(false);
@@ -16,20 +16,14 @@ export function useTasks() {
     }
     setLoading(true);
     setError("");
-    try {
-      const data = await apiFetch("/api/tasks", { token });
-      setTasks(data.tasks || []);
-    } catch (err) {
-      setError(err.message);
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
+    apiFetch("/api/tasks", { token })
+      .then((data) => setTasks(data.tasks || []))
+      .catch((err) => {
+        setError(err.message);
+        setTasks([]);
+      })
+      .finally(() => setLoading(false));
   }, [token]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   const createTask = async (payload) => {
     const data = await apiFetch("/api/tasks", { token, method: "POST", body: payload });
@@ -43,5 +37,5 @@ export function useTasks() {
     return data.task;
   };
 
-  return { tasks, loading, error, reload, createTask, updateTask };
+  return { tasks, loading, error, createTask, updateTask };
 }

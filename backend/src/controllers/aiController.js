@@ -2,7 +2,6 @@ import {
   generateWorkforceInsight,
   generateMorningInsightFromData,
   generateTasksCoachInsight,
-  getAiInfo,
 } from "../services/ai/insightService.js";
 
 export async function postInsight(req, res) {
@@ -44,8 +43,4 @@ export async function postInsight(req, res) {
       code,
     });
   }
-}
-
-export async function getAiStatus(req, res) {
-  return res.json(getAiInfo());
 }

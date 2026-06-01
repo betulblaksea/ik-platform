@@ -13,5 +13,3 @@ export const COMMUTE_METHODS = [
   { id: "other", label: "Diğer", icon: CircleHelp },
 ];
 
-export const COMMUTE_LABELS = Object.fromEntries(COMMUTE_METHODS.map((c) => [c.id, c.label]));
-export const WORK_MODE_LABELS = Object.fromEntries(WORK_MODES.map((w) => [w.id, w.label]));

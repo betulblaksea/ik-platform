@@ -196,7 +196,6 @@ function topCategories(categories, limit = 3) {
     .map(([k, n]) => ({ neden: GECIKME_KATEGORI_TR[k] || k, adet: n }));
 }
 
-/** Sabah girişi AI özeti — kayıt sayısı payı yok; gecikme ve devam odaklı */
 export function summarizeMorningAttendanceForAiTr(checkIns) {
   const dates = checkIns.map((c) => c.date).filter(Boolean).sort();
   const lateRows = checkIns.filter((c) => (c.delta || 0) > 0);

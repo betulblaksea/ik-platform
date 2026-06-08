@@ -462,7 +462,6 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* Morning chart / donut */
 .donut-wrap {
   position: relative;
   width: 180px;
@@ -712,7 +711,6 @@
   color: var(--text-faint);
 }
 
-/* Workforce planning */
 .planning-hero {
   border-radius: 1rem;
   padding: 1.5rem;
@@ -860,7 +858,6 @@
   pointer-events: none;
 }
 
-/* Work time log form */
 .work-log-success {
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
